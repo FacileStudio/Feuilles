@@ -1,0 +1,26 @@
+@import '@facile/muse/styles';
+@source '../node_modules/@facile/muse/src';
+
+body {
+	margin: 0;
+	min-height: 100dvh;
+	background-color: var(--color-fc-bg);
+	color: var(--color-fc-fg);
+	font-family: var(--font-fc-sans, system-ui, -apple-system, sans-serif);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+input:not(.bare):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']),
+textarea:not(.bare),
+select:not(.bare) {
+	border-width: 0;
+	background-color: var(--color-fc-surface);
+}
+
+input.bare,
+textarea.bare {
+	border-width: 0;
+}

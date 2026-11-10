@@ -1,5 +1,7 @@
 # Feuilles
 
+[![ci](https://github.com/FacileStudio/Feuilles/actions/workflows/ci.yml/badge.svg)](https://github.com/FacileStudio/Feuilles/actions/workflows/ci.yml)
+
 Collaborative spreadsheets for the Facile suite, on the IronCalc engine, in the browser and on
 the server.
 

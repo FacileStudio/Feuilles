@@ -53,20 +53,18 @@ old bytes, and the browser's `@ironcalc/wasm` must match the server exactly. Nev
    re-imported from its `.xlsx` copy. It stamps `engine_version` and exits non-zero when any
    workbook has neither.
 
-## Before the first deploy
+## Bumping a library
 
-The crates are referenced by local `file://` git URLs while nothing is pushed, so the image
-cannot build on a server. Once the owner pushes the libraries, edit `apps/api/Cargo.toml`:
+`apps/api/Cargo.toml` pins tronc-rs and porte-rs by GitHub URL and tag. To move to a new tag:
 
-1. In `[dependencies]` and `[dev-dependencies]`, `git = "file:///home/yann/Code/Facile/tronc-rs"`
-   becomes `git = "https://github.com/FacileStudio/tronc-rs"`.
-2. In `[dependencies]`, `git = "file:///home/yann/Code/Facile/porte-rs"` becomes
-   `git = "https://github.com/FacileStudio/porte-rs"`, at a porte-rs tag (`v0.5.0` or later)
-   whose own `tronc` dependency is the same HTTPS URL. Both must name the same tronc source, or
-   `tronc::Error` becomes two different types.
-3. Run `cargo update -p tronc -p porte` and check `cargo tree -i tronc` lists one tronc. Commit
-   `Cargo.lock`.
+1. Change the `tag` of `porte` (and of both `tronc` entries, `[dependencies]` and
+   `[dev-dependencies]`). Pick a porte-rs tag whose own `tronc` dependency names the same URL and
+   tag, or `tronc::Error` becomes two different types.
+2. Run `cargo update -p tronc -p porte` in `apps/api`, check that `cargo tree -i tronc` lists one
+   tronc, and commit `Cargo.lock`.
 
-Then register the app: `Registre/seed.yaml` entry (plan 7.8), the Dokploy environment through
+## Registering the app
+
+Register the app: `Registre/seed.yaml` entry (plan 7.8), the Dokploy environment through
 the `dokploy-env-safe` flow, `deploy-verify` with `VERIFY_URLS=https://feuilles.facile.studio`,
 the suite card, the vitrine entry, a Sonde monitor on `/health`.

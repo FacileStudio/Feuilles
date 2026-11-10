@@ -7,8 +7,8 @@ Collaborative spreadsheets on IronCalc. Rust API in `apps/api`, SvelteKit client
 
 - Rust 1.98.1 (`apps/api/rust-toolchain.toml`), axum 0.8, sqlx 0.9 (runtime queries only, no
   `query!` macros), Postgres 16
-- tronc-rs v0.3.0 and porte-rs v0.5.0 by local `file://` git tags until pushed. Both name
-  tronc by the same URL, so there is one `tronc::Error` type
+- tronc-rs v0.3.0 and porte-rs v0.5.1 by GitHub URL and tag. Both name tronc by the same URL
+  and tag, so there is one `tronc::Error` type
 - `ironcalc = "=0.9.1"`, and the client's `@ironcalc/wasm` at exactly the same version
 
 ## Commands

@@ -7,8 +7,8 @@ How to run the API locally, run the tests and pass the gate.
 - Rust 1.98.1 (`apps/api/rust-toolchain.toml`) with rustfmt and clippy
 - Docker, for Postgres 16 on `127.0.0.1:5653`
 - `filet` 0.18 or later, `lefthook` and `bun` through `mise install`
-- Sibling checkouts of `~/Code/Facile/tronc-rs` (tag `v0.3.0`) and `~/Code/Facile/porte-rs`
-  (tag `v0.5.0`): until the libraries are pushed, `Cargo.toml` reads them through `file://` URLs
+- Network access to `github.com/FacileStudio`: `Cargo.toml` fetches tronc-rs (tag `v0.3.0`)
+  and porte-rs (tag `v0.5.1`) by git URL
 
 ## Setup
 

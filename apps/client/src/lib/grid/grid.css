@@ -1,0 +1,158 @@
+.feuilles-grid {
+	--palette-common-white: var(--color-fc-bg);
+	--palette-primary-main: var(--color-fc-accent);
+	--palette-sheet-grid-color: var(--color-fc-border);
+	--palette-sheet-grid-separator-color: var(--color-fc-border);
+	--palette-sheet-header-border-color: var(--color-fc-border);
+	--palette-sheet-default-cell-font-family: var(--font-fc-sans, system-ui, sans-serif);
+	--palette-sheet-header-font: 500 12px var(--font-fc-sans, system-ui, sans-serif);
+	--palette-sheet-header-text-color: var(--color-fc-fg-muted);
+	--palette-sheet-header-background: var(--color-fc-component);
+	--palette-sheet-header-corner-background: var(--color-fc-component);
+	--palette-sheet-header-selected-background: var(--color-fc-surface);
+	--palette-sheet-header-selected-color: var(--color-fc-fg);
+	--palette-sheet-default-text-color: var(--color-fc-fg);
+	--palette-sheet-outline-color: var(--color-fc-accent);
+	--palette-sheet-outline-background-color: color-mix(in oklch, var(--color-fc-accent) 8%, transparent);
+	--palette-sheet-cell-array-structure-color: var(--color-fc-fg-muted);
+	background-color: var(--color-fc-bg);
+}
+
+.feuilles-grid .ic-worksheet-wrapper {
+	position: absolute;
+	inset: 0;
+	overflow: scroll;
+	overscroll-behavior: none;
+}
+
+.feuilles-grid .ic-worksheet-spacer {
+	position: absolute;
+	width: 5000px;
+	height: 5000px;
+}
+
+.feuilles-grid .ic-worksheet-sheet-container {
+	position: sticky;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	touch-action: none;
+}
+
+.feuilles-grid .ic-worksheet-sheet-canvas {
+	position: relative;
+	top: 0;
+	left: 0;
+}
+
+.feuilles-grid .column-resize-handle,
+.feuilles-grid .row-resize-handle {
+	position: absolute;
+	opacity: 0;
+	background: var(--palette-sheet-outline-color);
+	border-radius: 5px;
+}
+
+.feuilles-grid .column-resize-handle {
+	top: 0;
+	width: 3px;
+	cursor: col-resize;
+}
+
+.feuilles-grid .row-resize-handle {
+	left: 0;
+	height: 3px;
+	cursor: row-resize;
+}
+
+.feuilles-grid .column-resize-handle:hover,
+.feuilles-grid .row-resize-handle:hover {
+	opacity: 1;
+}
+
+.feuilles-grid .ic-worksheet-column-resize-guide,
+.feuilles-grid .ic-worksheet-row-resize-guide {
+	position: absolute;
+	display: none;
+	background: var(--palette-sheet-outline-color);
+}
+
+.feuilles-grid .ic-worksheet-column-resize-guide {
+	top: 0;
+	width: 1px;
+	height: 100%;
+}
+
+.feuilles-grid .ic-worksheet-row-resize-guide {
+	left: 0;
+	width: 100%;
+	height: 1px;
+}
+
+.feuilles-grid .ic-worksheet-column-headers {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: flex;
+	overflow: hidden;
+}
+
+.feuilles-grid .ic-worksheet-column-headers .column-header {
+	display: inline-block;
+	height: 100%;
+	overflow: hidden;
+	text-align: center;
+	user-select: none;
+}
+
+.feuilles-grid .ic-worksheet-area-outline {
+	position: absolute;
+	border-radius: 1px;
+	background-color: var(--palette-sheet-outline-background-color);
+}
+
+.feuilles-grid .ic-worksheet-cell-array-structure {
+	position: absolute;
+	outline: 1px solid var(--palette-sheet-cell-array-structure-color);
+}
+
+.feuilles-grid .ic-worksheet-cell-outline {
+	position: absolute;
+	display: flex;
+	border: 2px solid var(--palette-sheet-outline-color);
+	border-radius: 3px;
+}
+
+.feuilles-grid .ic-worksheet-extend-to-outline {
+	position: absolute;
+	border: 1px dashed var(--palette-sheet-outline-color);
+	border-radius: 3px;
+}
+
+.feuilles-grid .ironcalc-cell-handle {
+	position: absolute;
+	width: 6px;
+	height: 6px;
+	border-radius: 1px;
+	background: var(--palette-sheet-outline-color);
+	cursor: crosshair;
+}
+
+.feuilles-grid .readonly .ironcalc-cell-handle,
+.feuilles-grid .readonly .column-resize-handle,
+.feuilles-grid .readonly .row-resize-handle {
+	display: none;
+}
+
+.feuilles-grid .ic-worksheet-editor-wrapper {
+	position: absolute;
+	z-index: 10;
+	overflow: hidden;
+	outline: 2px solid var(--palette-sheet-outline-color);
+	background-color: var(--color-fc-bg);
+}
+
+.feuilles-grid .ic-worksheet-editor-wrapper.hidden-editor {
+	visibility: hidden;
+}

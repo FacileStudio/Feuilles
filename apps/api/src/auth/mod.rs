@@ -2,6 +2,7 @@
 
 mod deletions;
 mod members;
+mod retire;
 mod routes;
 mod spaces;
 

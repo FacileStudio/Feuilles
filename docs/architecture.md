@@ -65,7 +65,7 @@ API and MCP writes use the same path as client 0, so collaborators see them live
 | Table | Key | Holds |
 |---|---|---|
 | `porte_*` | | porte's accounts, identities and sessions (`migrations/0001_porte.sql`, verbatim) |
-| `spaces` | `id` | Registre's spaces, mirrored |
+| `spaces` | `id` | Registre's spaces, mirrored; `deleted_at` is set when Registre stops listing one |
 | `space_members` | `(space_id, subject)` | Members by Registre subject, with name, picture and role |
 | `directory_state`, `deletion_state` | `id = 1` | The last applied snapshot version, the deletion cursor |
 | `workbooks` | `id` | Title, settings, `engine_version`, `snapshot`, `snapshot_seq`, `seq`, `trashed_at` |
@@ -84,8 +84,17 @@ mapped to its subject through `porte_identities` under `OIDC_ISSUER`, then
 porte's conformance suite). `modules/workbooks/service.rs::require` is the one gate every route,
 socket and tool goes through; no access is 404 and an instance admin gets no bypass.
 
-The directory applier upserts spaces, deletes those Registre dropped (their workbooks cascade),
-replaces members, then closes the sockets of everyone who lost access with 1008. A deletion
+The directory applier (`auth/spaces.rs`, guards in `auth/retire.rs`) upserts spaces, replaces
+members, then closes the sockets of everyone who lost access with 1008. It never deletes a space
+or a workbook:
+
+- A space the snapshot no longer lists gets `deleted_at`, loses its member rows (so every
+  member loses access at once, and their sockets close with 1008), and its workbooks go to the
+  trash (`trashed_at = now()` where it was null). Only the 30-day purge deletes them.
+- A space that comes back is undeleted and gets its members again. Its workbooks stay in the
+  trash for a manager to restore.
+- An empty snapshot while any live space exists is not applied at all: the applier logs it at
+  error level and keeps the current state, version included, until a non-empty snapshot comes. A deletion
 erases the person's personal workbooks, memberships and account; space workbooks stay with no
 owner.
 
@@ -99,5 +108,5 @@ owner.
 - Snapshots are about 15 bytes per filled cell: 1M cells is 15 MB and loads in under 100 ms.
 - One API replica. A deploy disconnects every editor for a few seconds; clients reconnect and
   resend.
-- An empty directory snapshot deletes every space and its workbooks: Registre is trusted on
-  what spaces exist.
+- A Registre that really drops every space at once is not followed: the last space stays until
+  Registre lists at least one space again, or an operator removes it by hand.

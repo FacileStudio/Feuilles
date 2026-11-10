@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 
-use api::auth::Kits;
-use api::hub::{Hub, Limits};
-use api::modules::live::evictor;
+use api::hub::Limits;
 use api::router::{self, Options};
 use api::state::AppState;
 use std::net::SocketAddr;
@@ -11,10 +9,14 @@ use axum::Router;
 use uuid::Uuid;
 
 pub mod agent;
+pub mod directory;
 mod frames;
 pub mod sheet;
+mod state;
 pub mod web;
 pub mod ws;
+
+pub use state::state_in;
 
 pub const ISSUER: &str = "https://sso.test";
 
@@ -34,10 +36,7 @@ pub async fn state() -> Option<AppState> {
 }
 
 pub async fn state_with(limits: Limits) -> Option<AppState> {
-    let pool = tronc::testdb::pool("feuilles", &api::MIGRATOR).await?;
-    let hub = Hub::with_limits(pool.clone(), tokio::runtime::Handle::current(), 2, limits);
-    let kits = Kits::new(&porte::Config::default(), &pool, "", evictor(hub.clone())).await.expect("kits");
-    Some(AppState::new(pool, ISSUER.to_owned(), kits, hub))
+    state_in("feuilles", limits).await
 }
 
 pub async fn app() -> Option<TestApp> {

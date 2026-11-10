@@ -30,7 +30,7 @@ function newWorkbook(title: string): Workbook {
 		created_at: now,
 		updated_at: now,
 		trashed_at: null,
-		engine_version: '0.9.1'
+		engine_version: process.env.MOCK_ENGINE ?? '0.9.1'
 	};
 	workbooks.set(workbook.id, workbook);
 	return workbook;

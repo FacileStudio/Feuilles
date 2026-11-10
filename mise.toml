@@ -1,0 +1,31 @@
+[tools]
+lefthook = "latest"
+bun = "1.4.2"
+
+[hooks]
+postinstall = "lefthook install"
+
+[tasks.bootstrap]
+description = "Fetch the API crates and install the client packages"
+run = ["cd apps/api && cargo fetch --locked", "[ ! -f apps/client/package.json ] || (cd apps/client && bun install --frozen-lockfile)"]
+
+[tasks.db-up]
+description = "Start the repo-local Postgres dev database on 127.0.0.1:5653"
+run = "sh ./scripts/postgres-up.sh"
+
+[tasks.db-down]
+description = "Stop the repo-local Postgres dev database"
+run = "sh ./scripts/postgres-down.sh"
+
+[tasks.build]
+description = "Build the API in release mode and the client"
+run = ["cd apps/api && cargo build --release --locked", "[ ! -f apps/client/package.json ] || (cd apps/client && bun run build)"]
+
+[tasks.check]
+description = "Run the full quality gate"
+run = "sh ./scripts/check.sh"
+
+[tasks.dev]
+description = "Run the API against the dev database"
+env = { DATABASE_URL = "postgres://postgres:postgres@127.0.0.1:5653/feuilles?sslmode=disable", PORT = "4000" }
+run = "cd apps/api && cargo run"

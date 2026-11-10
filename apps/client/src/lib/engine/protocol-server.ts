@@ -1,0 +1,46 @@
+import { FrameType, type ClientFrame, type Cursor, type PresenceEntry, type RoleValue } from './protocol';
+import { frame, need, parseJson, ProtocolError, utf8 } from './wire';
+
+/** Encodes INIT: `0x10`, `seq: u64`, `client_id: u32`, `role: u8`, snapshot. */
+export function encodeInit(seq: number, clientId: number, role: RoleValue, snapshot: Uint8Array): Uint8Array<ArrayBuffer> {
+	const { bytes, view } = frame(FrameType.Init, 13, snapshot);
+	view.setBigUint64(1, BigInt(seq));
+	view.setUint32(9, clientId);
+	view.setUint8(13, role);
+	return bytes;
+}
+
+/** Encodes UPDATE: `0x11`, `seq: u64`, `client_id: u32`, `client_seq: u32`, payload. */
+export function encodeUpdate(seq: number, clientId: number, clientSeq: number, payload: Uint8Array): Uint8Array<ArrayBuffer> {
+	const { bytes, view } = frame(FrameType.Update, 16, payload);
+	view.setBigUint64(1, BigInt(seq));
+	view.setUint32(9, clientId);
+	view.setUint32(13, clientSeq);
+	return bytes;
+}
+
+/** Encodes REJECT: `0x12`, `client_seq: u32`, UTF-8 reason. */
+export function encodeReject(clientSeq: number, reason: string): Uint8Array<ArrayBuffer> {
+	const { bytes, view } = frame(FrameType.Reject, 4, utf8(reason));
+	view.setUint32(1, clientSeq);
+	return bytes;
+}
+
+/** Encodes PRESENCE: `0x13`, UTF-8 JSON list. */
+export function encodePresence(entries: PresenceEntry[]): Uint8Array<ArrayBuffer> {
+	return frame(FrameType.Presence, 0, utf8(JSON.stringify(entries))).bytes;
+}
+
+/** Decodes one client-to-server frame. The dev mock and the tests use it. */
+export function decodeClientFrame(bytes: Uint8Array): ClientFrame {
+	switch (bytes[0]) {
+		case FrameType.Push: {
+			const view = need(bytes, 5, 'PUSH');
+			return { type: 'push', clientSeq: view.getUint32(1), payload: bytes.slice(5) };
+		}
+		case FrameType.Cursor:
+			return { type: 'cursor', cursor: parseJson<Cursor>(bytes.subarray(1), 'CURSOR') };
+		default:
+			throw new ProtocolError(`unknown client frame type ${bytes[0]}`);
+	}
+}

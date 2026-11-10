@@ -1,11 +1,9 @@
 import init, { Model } from '@ironcalc/wasm';
 import wasmUrl from '@ironcalc/wasm/wasm_bg.wasm?url';
-import manifest from '@ironcalc/wasm/package.json';
 
 export { Model };
 
-/** Version of the bundled `@ironcalc/wasm`, which must equal the server's `ironcalc` crate. */
-export const ENGINE_VERSION: string = manifest.version;
+export { ENGINE_VERSION } from './version';
 
 let ready: Promise<void> | null = null;
 

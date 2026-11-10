@@ -14,6 +14,7 @@ pub mod router;
 pub mod security;
 pub mod serve;
 pub mod state;
+pub mod upgrade;
 pub mod version;
 
 /// The migrations, embedded in the binary.

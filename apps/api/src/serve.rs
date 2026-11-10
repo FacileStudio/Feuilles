@@ -39,6 +39,9 @@ pub async fn run(config: Config, args: Vec<String>) -> ExitCode {
     if let Err(error) = tronc::migrate::run(&pool, &MIGRATOR).await {
         return fail("migrate", &error);
     }
+    if let Some(code) = crate::upgrade::command(&args, &pool).await {
+        return code;
+    }
     let hub = Hub::start(pool.clone(), tokio::runtime::Handle::current(), Hub::default_shards());
     let kits = match Kits::new(&config.porte, &pool, &config.token_key, live::evictor(hub.clone())).await {
         Ok(kits) => kits,

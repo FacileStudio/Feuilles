@@ -1,0 +1,87 @@
+services:
+  feuilles-db:
+    container_name: feuilles-db
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: feuilles
+      POSTGRES_PASSWORD: feuilles-internal-db
+      POSTGRES_DB: feuilles
+    volumes:
+    - db_data:/var/lib/postgresql/data
+    expose:
+    - '5432'
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U feuilles
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    deploy:
+      update_config:
+        order: start-first
+        parallelism: 1
+      restart_policy:
+        condition: any
+  feuilles-api:
+    container_name: feuilles-api
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    expose:
+    - '4000'
+    networks:
+    - default
+    - dokploy-network
+    labels:
+      traefik.enable: 'true'
+      traefik.docker.network: dokploy-network
+      traefik.http.routers.feuilles-web.rule: "Host(`feuilles.facile.studio`)"
+      traefik.http.routers.feuilles-web.entrypoints: web
+      traefik.http.routers.feuilles-web.middlewares: redirect-to-https@file
+      traefik.http.routers.feuilles-web.service: feuilles-api
+      traefik.http.routers.feuilles-secure.rule: "Host(`feuilles.facile.studio`)"
+      traefik.http.routers.feuilles-secure.entrypoints: websecure
+      traefik.http.routers.feuilles-secure.tls.certresolver: letsencrypt
+      traefik.http.routers.feuilles-secure.service: feuilles-api
+      traefik.http.services.feuilles-api.loadbalancer.server.port: "4000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://feuilles:feuilles-internal-db@feuilles-db:5432/feuilles?sslmode=disable}
+      PORT: '4000'
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      TRUSTED_PROXIES: 'private,cloudflare'
+      JOURNAL_URL: ${JOURNAL_URL:-}
+      JOURNAL_TOKEN: ${JOURNAL_TOKEN:-}
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      PORTE_TOKEN_KEY: ${PORTE_TOKEN_KEY:-}
+      OIDC_REDIRECT_URL: ${OIDC_REDIRECT_URL:-}
+      OIDC_SUCCESS_URL: ${OIDC_SUCCESS_URL:-}
+      OIDC_CLI_AUDIENCE: ${OIDC_CLI_AUDIENCE:-}
+      MCP_RESOURCE: ${MCP_RESOURCE:-}
+      APP_ENV: ${APP_ENV:-production}
+    healthcheck:
+      test: ["CMD", "/api", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      feuilles-db:
+        condition: service_healthy
+    deploy:
+      replicas: 1
+      update_config:
+        order: stop-first
+        parallelism: 1
+      restart_policy:
+        condition: any
+volumes:
+  db_data:
+    name: feuilles_db_data
+networks:
+  dokploy-network:
+    external: true

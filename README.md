@@ -1,5 +1,84 @@
 # Feuilles
 
-Collaborative spreadsheets for the Facile suite, on the IronCalc engine.
+Collaborative spreadsheets for the Facile suite, on the IronCalc engine, in the browser and on
+the server.
 
-The app is not built yet. This repository holds only the F0 collaboration spike, which checks that the planned design works on IronCalc 0.9.1 before any app code is written. Its answers are in [`spikes/collab/README.md`](spikes/collab/README.md).
+Feuilles replaces Grist for plain spreadsheets. People in a Registre space edit a workbook
+together, agents read and write cells through MCP, and xlsx goes in and out. It is built
+locally and not deployed yet.
+
+## What it does
+
+- Workbooks per person or per Registre space, with a 30-day trash
+- Live co-editing over one WebSocket per workbook, ordered and stored by the server
+- The same IronCalc engine computes in the browser (WASM) and on the server
+- Import and export `.xlsx`, export a sheet as CSV
+- Read and write cell ranges over HTTP, live for everyone with the workbook open
+- Six MCP tools for agents, with Registre tokens, free on every plan
+- Registre sign-in only, with spaces and account deletions synced from Registre
+
+## Stack
+
+| Layer | Tech |
+|---|---|
+| API | Rust 1.98, axum 0.8, sqlx 0.9, PostgreSQL 16, IronCalc 0.9.1, tronc-rs 0.3.0, porte-rs 0.4.0 |
+| Client | SvelteKit 2 with Svelte 5 runes, `@ironcalc/wasm` 0.9.1, muse (`@facile/muse`) |
+| Deploy | Docker Compose, one container and one replica behind Traefik |
+
+## Quick start
+
+```sh
+mise install
+mise run db-up
+cd apps/api
+DATABASE_URL='postgres://postgres:postgres@127.0.0.1:5653/feuilles?sslmode=disable' PORT=4000 cargo run
+```
+
+Then open <http://localhost:4000/docs> for the API reference.
+
+### Tests and the gate
+
+```sh
+export TEST_DATABASE_URL='postgres://postgres:postgres@127.0.0.1:5653/postgres?sslmode=disable'
+sh scripts/check.sh
+filet check .
+```
+
+## Configuration
+
+| Variable | What it does |
+|---|---|
+| `DATABASE_URL` | Postgres connection string |
+| `PORT` | Listen port; the image sets `4000` |
+| `APP_ENV` | `production` requires the next two |
+| `OIDC_ISSUER` | Registre, `https://sso.facile.studio`, with `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` |
+| `PORTE_TOKEN_KEY` | Seals stored OIDC tokens |
+| `MCP_RESOURCE` | `https://feuilles.facile.studio/mcp`; mounts `/mcp` |
+
+Full reference: [docs/configuration.md](docs/configuration.md).
+
+## Structure
+
+```
+apps/
+  api/       Rust API: auth (porte), engine (IronCalc), hub (rooms), modules, mcp, tests
+  client/    SvelteKit client (built on the feat/client branch)
+docs/        Architecture, configuration, development, deployment, API
+scripts/     The gate, the dev database, the version stamp, the deploy check
+spikes/      F0 collaboration spike, not shipped
+```
+
+## Documentation
+
+| Doc | What's in it |
+|---|---|
+| [Architecture](docs/architecture.md) | Topology, collaboration rooms, data model, auth, known limits |
+| [Configuration](docs/configuration.md) | Every environment variable and default |
+| [Development](docs/development.md) | Local setup, tests, the quality gate |
+| [Deployment](docs/deployment.md) | Docker image, Compose, one replica, engine upgrades, first deploy |
+| [API](docs/api.md) | HTTP routes, the WebSocket protocol, MCP tools |
+
+---
+
+Part of the [Facile Suite](https://facile.studio) — self-hosted tools for creative studios
+and freelancers. One login, zero cloud dependency.

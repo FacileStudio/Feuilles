@@ -40,7 +40,7 @@ export class Session {
 	presence = $state.raw<PresenceEntry[]>([]);
 	revision = $state(0);
 	notice = $state<string | null>(null);
-	replica: Replica<Model> | null = null;
+	replica = $state.raw<Replica<Model> | null>(null);
 	private socket: SessionSocket | null = null;
 	private attempts = 0;
 	private retry: unknown = null;

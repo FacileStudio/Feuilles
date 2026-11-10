@@ -15,6 +15,7 @@
 		return view.getCellStyle(sheet, row, column).style;
 	});
 	const off = $derived(!session.canEdit);
+	const ghost = '[&>button]:bg-transparent [&>button]:text-fc-fg-muted [&>button]:hover:bg-fc-surface [&>button]:hover:text-fc-fg [&>button]:rounded-fc-pill';
 
 	const toggles: { id: Toggle; label: string; icon: string }[] = [
 		{ id: 'bold', label: 'Bold', icon: icons.bold },
@@ -49,7 +50,7 @@
 </script>
 
 {#snippet colour(label: string, icon: string, path: string)}
-	<Popover {label}>
+	<Popover {label} class={ghost}>
 		{#snippet trigger()}<Icon {icon} size={18} />{/snippet}
 		<div class="flex w-60 flex-col gap-3 p-3">
 			<ColorPicker swatches={USER_COLORS} disabled={off} onChange={(hex) => commands.style(path, hex)} />
@@ -95,10 +96,10 @@
 		</IconButton>
 	{/each}
 	<span class="mx-1 h-6 w-2 shrink-0" aria-hidden="true"></span>
-	<Menu label="Number format" items={formatItems}>
+	<Menu label="Number format" items={formatItems} class={ghost}>
 		{#snippet trigger()}<Icon icon={icons.number} size={18} />{/snippet}
 	</Menu>
-	<Menu label="Rows and columns" items={lineItems}>
+	<Menu label="Rows and columns" items={lineItems} class={ghost}>
 		{#snippet trigger()}<Icon icon={icons.layers} size={18} />{/snippet}
 	</Menu>
 	<IconButton variant="ghost" aria-label="Freeze panes at the active cell" title="Freeze panes" disabled={off} onclick={() => commands.freeze()}>

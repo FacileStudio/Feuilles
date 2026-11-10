@@ -70,7 +70,7 @@
 					{sheet.name}
 				</button>
 				{#if active}
-					<Menu label={`Sheet ${sheet.name}`} items={items(sheet.index, sheet.name)} class="[&>button]:h-8 [&>button]:min-h-0 [&>button]:px-1">
+					<Menu label={`Sheet ${sheet.name}`} items={items(sheet.index, sheet.name)} class="[&>button]:h-8 [&>button]:min-h-0 [&>button]:bg-transparent [&>button]:px-1">
 						{#snippet trigger()}<Icon icon={icons.chevronDown} size={14} />{/snippet}
 					</Menu>
 				{/if}

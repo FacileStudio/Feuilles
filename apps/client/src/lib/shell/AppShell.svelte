@@ -57,7 +57,7 @@
 		/>
 	</div>
 
-	<main class="flex min-w-0 flex-1 flex-col overflow-auto overscroll-contain pb-28 md:pb-0">
+	<main class="flex min-w-0 flex-1 flex-col overflow-auto overscroll-contain {fullBleed ? '' : 'pb-28 md:pb-0'}">
 		{#if !fullBleed}
 			<Topbar class="md:hidden">
 				<div class="flex min-w-0 flex-1 items-center gap-3">

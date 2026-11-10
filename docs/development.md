@@ -60,7 +60,9 @@ the client, then runs `apps/client/e2e/collab.e2e.ts` with `bun test`. The harne
 2. serves a fake issuer that answers OIDC discovery and an empty key set, nothing else, so porte
    boots with `OIDC_ISSUER` and Registre subjects key space membership. It cannot sign anyone in,
    and the directory sync against it fails with a warning and changes nothing;
-3. starts `target/debug/api` on a free port with `CLIENT_DIR=apps/client/build`;
+3. starts `target/debug/api` on a free port with `CLIENT_DIR=apps/client/build`, and waits up to
+   `E2E_READY_SECONDS` (default 120) for `/ready`: on a loaded machine the first migrations alone
+   can take over 30 seconds;
 4. runs `e2e_seed` (`apps/api/examples/e2e_seed.rs`), which writes alice (space owner), bob
    (member) and an outsider straight into the database and mints each a browser session with
    porte's session store. The `api` binary has no login bypass: the image builds only `api`.

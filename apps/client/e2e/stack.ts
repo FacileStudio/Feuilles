@@ -53,14 +53,16 @@ async function freshDatabase(): Promise<string> {
 	return url.toString();
 }
 
+const readySeconds = Number(process.env.E2E_READY_SECONDS ?? 120);
+
 async function ready(base: string, server: Subprocess): Promise<void> {
-	for (let attempt = 0; attempt < 300; attempt += 1) {
+	for (let attempt = 0; attempt < readySeconds * 10; attempt += 1) {
 		if (server.exitCode !== null) throw new Error(`the API exited with ${server.exitCode}`);
 		const answer = await fetch(`${base}/ready`).catch(() => null);
 		if (answer?.ok) return;
 		await Bun.sleep(100);
 	}
-	throw new Error('the API did not become ready in 30 seconds');
+	throw new Error(`the API did not become ready in ${readySeconds} seconds`);
 }
 
 async function seed(env: Record<string, string>): Promise<{ space: string; cookies: Stack['cookies'] }> {

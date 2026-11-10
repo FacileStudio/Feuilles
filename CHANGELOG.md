@@ -2,6 +2,26 @@
 
 All notable changes to Feuilles. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.4.2] - 2026-11-10
+
+### Changed
+
+- tronc-rs v0.3.0 and porte-rs v0.5.1 come from their public GitHub repositories, not local
+  `file://` paths, so the image builds anywhere. `cargo tree -i tronc` lists one tronc
+- `docs/deployment.md` explains how to bump a library tag instead of the one-off first-deploy
+  edits
+
+### Fixed
+
+- The Docker dependency-cache stage builds again: it creates a stub `src/lib.rs` beside the stub
+  `main.rs`, and the real build touches both so cargo never ships the stub binary
+
+## [0.4.1] - 2026-11-10
+
+### Fixed
+
+- The browser e2e run waits up to two minutes for the API to become ready
+
 ## [0.4.0] - 2026-11-10
 
 ### Added

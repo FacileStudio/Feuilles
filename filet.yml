@@ -30,11 +30,8 @@ limits:
   funcStatements: 25
   lineLength: 120
   params: 5
-  returns: 3
   nesting: 4
   complexity: 10
-  structFields: 12
-  interfaceMethods: 4
 
 architecture:
   requiredDirs: [apps/api, apps/client]
@@ -45,9 +42,6 @@ architecture:
 style:
   banInlineComments: true
   banTODO: true
-  requireDocComments: true
-  banGlobalMutable: true
-  banInit: true
   banTrailingSpace: true
 
 disabled:

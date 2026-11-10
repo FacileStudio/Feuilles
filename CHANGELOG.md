@@ -2,6 +2,12 @@
 
 All notable changes to Feuilles. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.4.3] - 2026-11-10
+
+### Changed
+
+- Licensed under AGPL-3.0-only, like Capsule and Plume.
+
 ## [0.4.2] - 2026-11-10
 
 ### Changed

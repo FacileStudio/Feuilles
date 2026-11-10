@@ -74,7 +74,12 @@ export class Session {
 
 	/** Runs a local edit on `view` and pushes the batch it produced. Returns false when editing is not allowed. */
 	edit(change: (model: Model) => void): boolean {
-		if (!this.canEdit || !this.replica) return false;
+		if (!this.replica) return false;
+		if (!this.canEdit) {
+			this.replica.discard();
+			this.revision += 1;
+			return false;
+		}
 		const entry = this.replica.edit(change);
 		if (entry && entry.batch.length > MAX_PUSH_BYTES) {
 			this.replica.reject(entry.clientSeq);

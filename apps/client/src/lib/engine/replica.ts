@@ -68,6 +68,11 @@ export class Replica<M extends EngineModel> {
 		return entry;
 	}
 
+	/** Throws away anything changed on `view` outside `edit`, for a session that may not edit. */
+	discard(): void {
+		if (!sameBytes(this.view.flushSendQueue(), this.empty)) this.rebuild();
+	}
+
 	/** Applies one UPDATE. */
 	update(accepted: Accepted): UpdateResult {
 		if (accepted.seq <= this.seq) return 'duplicate';

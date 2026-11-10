@@ -61,7 +61,7 @@ Checked by hand with two headless Chromium pages against the mock: one types `1`
 
 ## Contract notes and gaps
 
-The client follows plan sections 7.2, 7.5 and 7.7. Where the plan is silent:
+The client follows plan sections 7.2, 7.5 and 7.7. Where the plan is silent, the client made the choices below. Items 1 to 3 match what `apps/api` on main answers as of 2026-11-10 (`auth/routes.rs`, `modules/workbooks/types.rs`, `engine/read.rs`).
 
 1. **Session route.** The plan names `/auth/session` but not its body. The client expects Capsule's: `GET /api/auth/session` answers `{"user": {"email","name"?,"avatar_url"?} | null}`. Sign-in goes to `GET /api/auth/oidc`, sign-out is `POST /api/auth/logout`.
 2. **Engine version.** The `Workbook` struct in 7.5 has no `engine_version`, while 7.7 says the client compares it. The client reads `engine_version` from the workbook when present, else `engine` from `GET /version`, and compares the `x.y.z` part with `@ironcalc/wasm`'s version. Neither present means the workbook is refused. `/version` sits outside `/api`, so the dev proxy forwards it too.

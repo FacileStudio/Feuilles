@@ -37,9 +37,9 @@ bun run build   # static build in build/
 | Path | What it does |
 |---|---|
 | `src/lib/backend.ts`, `src/lib/api/` | Fetch wrapper: relative paths, `credentials: 'include'`, `X-Facile-CSRF: 1` on every non-GET, the `{"error":{"code","message"}}` envelope turned into `ApiError` with a typed `code` |
-| `src/lib/engine/protocol.ts`, `protocol-server.ts`, `wire.ts` | The frames of plan 7.2, byte for byte. The server-side encoders serve the tests and the mock |
+| `src/lib/engine/protocol.ts`, `protocol-server.ts`, `wire.ts` | The frames of `docs/api.md`, byte for byte. The server-side encoders serve the tests and the mock |
 | `src/lib/engine/replica.ts` | The 7.1 algorithm: `confirmed`, `view`, `pending`, the reject path, and the F0 notes (no empty batch; a pending batch that no longer replays is dropped) |
-| `src/lib/engine/session.svelte.ts` | Socket, INIT, reconnect with backoff and resend under new `client_seq` values, presence, cursor frames at most 10 per second |
+| `src/lib/engine/session.svelte.ts` | Socket, HELLO, INIT with `acked`, reconnect per close code and idempotent resend, presence, cursor frames at most 10 per second |
 | `src/lib/engine/version.ts` | The engine version guard |
 | `src/lib/grid/canvas/` | IronCalc v0.9.1's `WorksheetCanvas` vendored under `vendor/`, see `NOTICE` |
 | `src/lib/grid/*.svelte` | `Grid`, `CellEditor`, `FormulaBar`, `Toolbar`, `SheetTabs`, `ContextMenu`, `Cursors`, `WorkbookView` |
@@ -52,25 +52,24 @@ Not covered in v1: picking a reference with the mouse while typing a formula, fo
 
 ## Tests
 
-- `protocol.test.ts`: golden byte vectors for every frame, written from the 7.2 table, plus malformed frames.
-- `session.test.ts`: the session against a fake socket and a fake room, one test per path (echo, reject, replay drop, reconnect and resend, sequence gap, 1008, viewer, presence, cursor throttle, keepalive).
-- `convergence.test.ts`: 1000 random cases (set `SESSION_CASES` for more). Three sessions, random edits, random delivery order, random dropped connections. At the end every `confirmed` and every `view` equals the server byte for byte. The test fails within a few seeds if the view rebuild is removed.
+- `protocol.test.ts`: golden byte vectors for every frame, HELLO and INIT's `acked` included, written from the `docs/api.md` table, plus malformed frames.
+- `session.test.ts`: the session against a fake socket and a fake room, one test per path (HELLO, echo, reject, replay drop, reconnect and resend, a lost echo never resent, numbering after a reload, close codes 1008, 1009, 1012, 1013 and 1001, sequence gap, viewer, presence, cursor throttle, keepalive).
+- `convergence.test.ts`: 1000 random cases (set `SESSION_CASES` for more). Three sessions, random edits, random delivery order, random dropped connections. At the end every `confirmed` and every `view` equals the server byte for byte, and the fake room, which tracks `acked` per origin like the API, never saw an acknowledged batch again. The test fails within a few seeds if the view rebuild is removed.
 - `backend.test.ts`, `keyboard.test.ts`, `clipboard.test.ts`, `commands.test.ts`, and small pure helpers.
 
 Checked by hand with two headless Chromium pages against the mock: one types `1`, `2`, `3` and `=SUM(A1:A3)` in A1 to A4 while the other sets A2 to `10`; both show `14` within a second, and a bold set in one page shows in the other.
 
-## Contract notes and gaps
+## Contract notes
 
-The client follows plan sections 7.2, 7.5 and 7.7. Where the plan is silent, the client made the choices below. Items 1 to 3 match what `apps/api` on main answers as of 2026-11-10 (`auth/routes.rs`, `modules/workbooks/types.rs`, `engine/read.rs`).
+`docs/api.md` at the repo root is the contract with the API. The client follows it, including:
 
-1. **Session route.** The plan names `/auth/session` but not its body. The client expects Capsule's: `GET /api/auth/session` answers `{"user": {"email","name"?,"avatar_url"?} | null}`. Sign-in goes to `GET /api/auth/oidc`, sign-out is `POST /api/auth/logout`.
-2. **Engine version.** The `Workbook` struct in 7.5 has no `engine_version`, while 7.7 says the client compares it. The client reads `engine_version` from the workbook when present, else `engine` from `GET /version`, and compares the `x.y.z` part with `@ironcalc/wasm`'s version. Neither present means the workbook is refused. `/version` sits outside `/api`, so the dev proxy forwards it too.
-3. **`SheetInfo`.** Its fields are not given. The client reads `name` only.
-4. **Keepalive.** 7.2 says the client pings every 25 seconds, but a browser cannot send WebSocket ping frames. The client resends its CURSOR frame every 25 seconds instead. The server must count any client frame as activity.
-5. **Resend can duplicate.** On reconnect the client resends every pending batch, as 7.2 says. A batch the server accepted just before the socket died, whose echo was lost, is applied twice. Every replica still converges, but an inserted row can appear twice. Closing this needs an idempotency key, for example the server remembering `(subject, connection nonce, client_seq)` across a reconnect.
-6. **Refused upgrades.** A 401 or 404 on the WebSocket upgrade reaches the browser as close code 1006, like a network drop, so the client keeps retrying with backoff (0.5 to 10 seconds). Only 1008 stops it. The page loads `GET /api/workbooks/{id}` first, which catches most of these.
-7. **Oversized batches.** The client refuses a batch over 1 MiB locally and rebuilds the view, rather than letting the server close with 1009 and resending it forever.
-8. **Space roles.** `GET /spaces` roles are taken as `member`, `admin` or `owner`.
+1. **Session route.** `GET /api/auth/session` answers `{"user": {"id","email","name","avatar_url"?} | null}`. Sign-in goes to `GET /api/auth/oidc`, sign-out is `POST /api/auth/logout`.
+2. **Engine version.** The client reads `engine_version` from the workbook when present, else `engine` from `GET /version`, and compares the `x.y.z` part with `@ironcalc/wasm`'s version. Neither present means the workbook is refused.
+3. **HELLO and resends.** Every socket sends HELLO first with a 16-byte origin. `claimOrigin` (`src/lib/engine/origin.ts`) keeps it per workbook in `sessionStorage` and holds it with a Web Lock, so a duplicated tab takes a fresh one instead of sharing it. On every INIT the replica drops the pending batches with `client_seq <= acked`, resends the rest under their own numbers, and numbers new batches above `acked`. A batch the server accepted whose echo was lost is never sent again (`session.test.ts`, and `convergence.test.ts` checks it on every case).
+4. **Close codes.** 1008 stops: reason `unauthenticated` shows "sign in again", anything else "no access". 1012 reconnects at once. 1001, 1013, 1011 and network drops reconnect with backoff (0.5 to 10 seconds). 1009 drops the first batch the server had not accepted and tells the user.
+5. **Keepalive.** A browser cannot send WebSocket pings, so the client resends its CURSOR frame every 25 seconds. The server counts any client frame as activity.
+6. **Refused upgrades.** The server completes a refused upgrade and closes it with 1008, so the client stops. The page loads `GET /api/workbooks/{id}` first; a 404 shows the no-access screen.
+7. **Oversized batches.** The client refuses a batch over 1 MiB locally and rebuilds the view, so 1009 should not happen in practice.
 
 ## Deviations
 

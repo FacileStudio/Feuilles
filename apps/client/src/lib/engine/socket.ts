@@ -2,8 +2,9 @@
 export interface SessionSocket {
 	send(data: Uint8Array<ArrayBuffer>): void;
 	close(code?: number): void;
+	onopen: (() => void) | null;
 	onmessage: ((event: { data: unknown }) => void) | null;
-	onclose: ((event: { code: number }) => void) | null;
+	onclose: ((event: { code: number; reason?: string }) => void) | null;
 }
 
 /** Time and randomness, injected so tests are deterministic. */
@@ -39,9 +40,11 @@ export function browserSocket(url: string): SessionSocket {
 	const socket: SessionSocket = {
 		send: (data) => ws.send(data),
 		close: (code) => ws.close(code),
+		onopen: null,
 		onmessage: null,
 		onclose: null
 	};
+	ws.onopen = () => socket.onopen?.();
 	ws.onmessage = (event) => socket.onmessage?.(event);
 	ws.onclose = (event) => socket.onclose?.(event);
 	return socket;

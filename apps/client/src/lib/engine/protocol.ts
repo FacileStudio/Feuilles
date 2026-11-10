@@ -2,10 +2,11 @@ import { frame, fromUtf8, need, parseJson, ProtocolError, readU64, utf8 } from '
 
 export { ProtocolError } from './wire';
 
-/** Frame type bytes of the Feuilles wire protocol (plan section 7.2). */
+/** Frame type bytes of the Feuilles wire protocol (`docs/api.md`). */
 export const FrameType = {
 	Push: 0x01,
 	Cursor: 0x02,
+	Hello: 0x03,
 	Init: 0x10,
 	Update: 0x11,
 	Reject: 0x12,
@@ -36,7 +37,7 @@ export type PresenceEntry = {
 
 /** A frame the server sends. */
 export type ServerFrame =
-	| { type: 'init'; seq: number; clientId: number; role: RoleValue; snapshot: Uint8Array }
+	| { type: 'init'; seq: number; clientId: number; role: RoleValue; acked: number; snapshot: Uint8Array }
 	| { type: 'update'; seq: number; clientId: number; clientSeq: number; payload: Uint8Array }
 	| { type: 'reject'; clientSeq: number; reason: string }
 	| { type: 'presence'; entries: PresenceEntry[] };
@@ -44,7 +45,17 @@ export type ServerFrame =
 /** A frame the client sends. */
 export type ClientFrame =
 	| { type: 'push'; clientSeq: number; payload: Uint8Array }
-	| { type: 'cursor'; cursor: Cursor };
+	| { type: 'cursor'; cursor: Cursor }
+	| { type: 'hello'; origin: Uint8Array };
+
+/** Length of the HELLO origin: 16 random bytes naming one browser session. */
+export const ORIGIN_BYTES = 16;
+
+/** Encodes HELLO: `0x03`, `origin: [u8; 16]`. It must be the first frame on every socket. */
+export function encodeHello(origin: Uint8Array): Uint8Array<ArrayBuffer> {
+	if (origin.length !== ORIGIN_BYTES) throw new ProtocolError(`origin must be ${ORIGIN_BYTES} bytes`);
+	return frame(FrameType.Hello, 0, origin).bytes;
+}
 
 /** Encodes PUSH: `0x01`, `client_seq: u32`, payload. */
 export function encodePush(clientSeq: number, payload: Uint8Array): Uint8Array<ArrayBuffer> {
@@ -63,10 +74,11 @@ export function encodeCursor(cursor: Cursor): Uint8Array<ArrayBuffer> {
 export function decodeServerFrame(bytes: Uint8Array): ServerFrame {
 	switch (bytes[0]) {
 		case FrameType.Init: {
-			const view = need(bytes, 14, 'INIT');
+			const view = need(bytes, 18, 'INIT');
 			const role = view.getUint8(13);
 			if (role !== Role.Viewer && role !== Role.Editor) throw new ProtocolError(`unknown role ${role}`);
-			return { type: 'init', seq: readU64(view, 1), clientId: view.getUint32(9), role, snapshot: bytes.slice(14) };
+			const head = { seq: readU64(view, 1), clientId: view.getUint32(9), role, acked: view.getUint32(14) };
+			return { type: 'init', ...head, snapshot: bytes.slice(18) };
 		}
 		case FrameType.Update: {
 			const view = need(bytes, 17, 'UPDATE');

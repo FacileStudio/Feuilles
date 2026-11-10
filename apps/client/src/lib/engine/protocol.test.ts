@@ -1,11 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { decodeServerFrame, encodeCursor, encodePush, ProtocolError, Role } from './protocol';
+import { decodeServerFrame, encodeCursor, encodeHello, encodePush, ProtocolError, Role } from './protocol';
 import { decodeClientFrame, encodeInit, encodePresence, encodeReject, encodeUpdate } from './protocol-server';
 
 const bytes = (...values: number[]) => new Uint8Array(values);
 const ascii = (text: string) => [...text].map((c) => c.charCodeAt(0));
 
-describe('client frames, golden bytes from plan 7.2', () => {
+describe('client frames, golden bytes from docs/api.md', () => {
+	it('HELLO is 0x03 then the 16-byte origin', () => {
+		const origin = Uint8Array.from({ length: 16 }, (_, i) => i + 1);
+		expect(Array.from(encodeHello(origin))).toEqual([0x03, ...origin]);
+		expect(decodeClientFrame(encodeHello(origin))).toEqual({ type: 'hello', origin });
+	});
+
+	it('HELLO refuses an origin that is not 16 bytes', () => {
+		expect(() => encodeHello(new Uint8Array(15))).toThrow(ProtocolError);
+		expect(() => decodeClientFrame(bytes(0x03, 1, 2))).toThrow(ProtocolError);
+	});
+
 	it('PUSH is 0x01, client_seq u32 BE, then the payload', () => {
 		const frame = encodePush(0x01020304, bytes(0xaa, 0xbb));
 		expect(Array.from(frame)).toEqual([0x01, 0x01, 0x02, 0x03, 0x04, 0xaa, 0xbb]);
@@ -27,14 +38,18 @@ describe('client frames, golden bytes from plan 7.2', () => {
 	});
 });
 
-describe('server frames, golden bytes from plan 7.2', () => {
-	const init = [0x10, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 7, 0x02, 0xde, 0xad];
+describe('server frames, golden bytes from docs/api.md', () => {
+	const init = [0x10, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 7, 0x02, 0, 0, 0x01, 0x05, 0xde, 0xad];
 	const update = [0x11, 0, 0, 0, 0, 0, 0, 0x01, 0x00, 0, 0, 0, 0, 0, 0, 0, 5, 0x42];
 
-	it('INIT is seq u64, client_id u32, role u8, snapshot', () => {
-		const decoded = decodeServerFrame(bytes(...init));
-		expect(decoded).toEqual({ type: 'init', seq: 2 ** 32 + 2, clientId: 7, role: Role.Editor, snapshot: bytes(0xde, 0xad) });
-		expect(Array.from(encodeInit(2 ** 32 + 2, 7, Role.Editor, bytes(0xde, 0xad)))).toEqual(init);
+	it('INIT is seq u64, client_id u32, role u8, acked u32, snapshot', () => {
+		const head = { seq: 2 ** 32 + 2, clientId: 7, role: Role.Editor, acked: 261 };
+		expect(decodeServerFrame(bytes(...init))).toEqual({ type: 'init', ...head, snapshot: bytes(0xde, 0xad) });
+		expect(Array.from(encodeInit(head, bytes(0xde, 0xad)))).toEqual(init);
+	});
+
+	it('INIT with no snapshot bytes still decodes', () => {
+		expect(decodeServerFrame(bytes(...init.slice(0, 18)))).toMatchObject({ acked: 261, snapshot: bytes() });
 	});
 
 	it('UPDATE is seq u64, client_id u32 (0 = server), client_seq u32, payload', () => {
@@ -70,11 +85,12 @@ describe('server frames, golden bytes from plan 7.2', () => {
 describe('malformed frames', () => {
 	it.each([
 		['truncated INIT', [0x10, 0, 0]],
+		['INIT without acked', [0x10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0]],
 		['truncated UPDATE', [0x11, 0, 0, 0, 0, 0, 0, 0, 1]],
 		['truncated REJECT', [0x12, 0]],
 		['unknown type', [0x7f]],
 		['empty frame', []],
-		['unknown role', [0x10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 9]],
+		['unknown role', [0x10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 9, 0, 0, 0, 0]],
 		['bad presence JSON', [0x13, ...ascii('[{')]],
 		['seq past 2^53', [0x11, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0]]
 	])('%s throws ProtocolError', (_name, frame) => {

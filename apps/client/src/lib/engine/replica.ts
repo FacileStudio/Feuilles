@@ -19,6 +19,9 @@ export type Pending = { clientSeq: number; batch: Uint8Array };
 /** An accepted batch, as UPDATE carries it. */
 export type Accepted = { seq: number; clientId: number; clientSeq: number; payload: Uint8Array };
 
+/** What INIT tells a replica: the room's `seq`, this socket's client id, and the origin's highest accepted `client_seq`. */
+export type Head = { seq: number; clientId: number; acked: number };
+
 /** What happened to an UPDATE: applied, already seen, or out of order (the caller must resync). */
 export type UpdateResult = 'applied' | 'duplicate' | 'desync';
 
@@ -42,13 +45,13 @@ export class Replica<M extends EngineModel> {
 	constructor(
 		private readonly load: (bytes: Uint8Array) => M,
 		snapshot: Uint8Array,
-		seq: number,
-		clientId: number
+		head: Head
 	) {
 		this.confirmed = load(snapshot);
 		this.view = load(snapshot);
-		this.seq = seq;
-		this.clientId = clientId;
+		this.seq = head.seq;
+		this.clientId = head.clientId;
+		this.nextClientSeq = head.acked + 1;
 		this.empty = this.confirmed.flushSendQueue();
 	}
 
@@ -95,18 +98,23 @@ export class Replica<M extends EngineModel> {
 	}
 
 	/**
-	 * Handles a fresh INIT after a reconnect: replaces `confirmed`, rebuilds `view` from the new
-	 * snapshot and the pending batches, and renumbers what survived. Returns the batches to resend.
+	 * Handles a fresh INIT after a reconnect. Drops the pending batches the server already
+	 * accepted (`client_seq <= acked`), replaces `confirmed`, and rebuilds `view` from the new
+	 * snapshot and what is left. `client_seq` keeps increasing, so a resend can never be taken for a
+	 * new batch. With `dropFirst`, the first batch the server has not accepted is dropped too: it is
+	 * the one that closed the socket with 1009. Returns the batches to resend, and whether one was
+	 * dropped that way.
 	 */
-	reset(snapshot: Uint8Array, seq: number, clientId: number): Pending[] {
+	reset(snapshot: Uint8Array, head: Head, dropFirst = false): { resend: Pending[]; dropped: boolean } {
 		this.confirmed.free();
 		this.confirmed = this.load(snapshot);
-		this.seq = seq;
-		this.clientId = clientId;
-		this.nextClientSeq = 1;
+		this.seq = head.seq;
+		this.clientId = head.clientId;
+		this.pending = this.pending.filter((entry) => entry.clientSeq > head.acked);
+		const dropped = dropFirst && this.pending.shift() !== undefined;
+		this.nextClientSeq = Math.max(this.nextClientSeq, head.acked + 1);
 		this.rebuild();
-		for (const entry of this.pending) entry.clientSeq = this.nextClientSeq++;
-		return [...this.pending];
+		return { resend: [...this.pending], dropped };
 	}
 
 	/** Rebuilds `view` as `confirmed` plus every pending batch that still replays, keeping the selection. */

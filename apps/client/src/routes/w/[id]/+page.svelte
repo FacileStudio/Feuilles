@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { Alert, Avatar, Badge, Button, EmptyState, Icon, Menu, Spinner, StatusDot, toast } from '@facile/muse';
-	import { backend, exportUrl, socketPath, type Workbook } from '$lib/backend';
+	import { ApiError, backend, exportUrl, signInUrl, socketPath, type Workbook } from '$lib/backend';
+	import { claimOrigin, type OriginClaim } from '$lib/engine/origin';
 	import { Role } from '$lib/engine/protocol';
 	import { Session } from '$lib/engine/session.svelte';
 	import { socketUrl } from '$lib/engine/socket';
@@ -13,14 +14,19 @@
 	import { explain } from '$lib/workbooks/list.svelte';
 	import { noticeText, statusLabel } from '$lib/workbooks/status';
 
-	type Phase = { kind: 'loading' } | { kind: 'failed'; message: string } | { kind: 'mismatch'; server: string } | { kind: 'ready' };
+	type Phase =
+		| { kind: 'loading' }
+		| { kind: 'failed'; message: string }
+		| { kind: 'no_access' }
+		| { kind: 'mismatch'; server: string }
+		| { kind: 'ready' };
 
 	let phase = $state<Phase>({ kind: 'loading' });
 	let workbook = $state<Workbook | null>(null);
 	let session = $state.raw<Session | null>(null);
 	let renameOpen = $state(false);
 
-	async function open(id: string): Promise<Session | null> {
+	async function open(id: string, claim: Promise<OriginClaim>): Promise<Session | null> {
 		const [meta, server] = await Promise.all([backend.get(id), backend.version().catch(() => null), loadEngine()]);
 		workbook = meta;
 		const stored = meta.engine_version ?? server?.engine;
@@ -30,21 +36,29 @@
 		}
 		phase = { kind: 'ready' };
 		const url = socketUrl(socketPath(id), window.location);
-		return new Session({ url, load: (bytes) => modelFromBytes(bytes, meta.language) });
+		const { origin } = await claim;
+		return new Session({ url, origin, load: (bytes) => modelFromBytes(bytes, meta.language) });
+	}
+
+	function failed(error: unknown): Phase {
+		if (error instanceof ApiError && error.code === 'not_found') return { kind: 'no_access' };
+		return { kind: 'failed', message: explain(error) };
 	}
 
 	$effect(() => {
 		const id = page.params.id ?? '';
 		let current: Session | null = null;
 		let gone = false;
+		const claim = claimOrigin(id);
 		phase = { kind: 'loading' };
-		open(id)
+		open(id, claim)
 			.then((next) => (gone ? next?.close() : (session = current = next)))
-			.catch((error) => (phase = { kind: 'failed', message: explain(error) }));
+			.catch((error) => (phase = failed(error)));
 		return () => {
 			gone = true;
 			current?.close();
 			session = null;
+			void claim.then(({ release }) => release());
 		};
 	});
 
@@ -109,6 +123,14 @@
 		<EmptyState icon={icons.warning} title="This workbook could not be opened" description={phase.message}>
 			<Button href="/" variant="secondary">Back to workbooks</Button>
 		</EmptyState>
+	{:else if phase.kind === 'no_access'}
+		<EmptyState
+			icon={icons.warning}
+			title="No access"
+			description="This workbook does not exist, or it belongs to a space you are not a member of."
+		>
+			<Button href="/" variant="secondary">Back to workbooks</Button>
+		</EmptyState>
 	{:else if phase.kind === 'mismatch'}
 		<EmptyState
 			icon={icons.refresh}
@@ -118,8 +140,13 @@
 			<Button icon={icons.refresh} onclick={() => window.location.reload()}>Reload the page</Button>
 		</EmptyState>
 	{:else if session}
-		{#if session.status === 'revoked'}
-			<Alert tone="danger" class="mx-3 mb-2">You no longer have access to this workbook. Your last unsaved edits were not kept.</Alert>
+		{#if session.status === 'revoked' && session.revokedReason === 'signed_out'}
+			<Alert tone="warning" class="mx-3 mb-2">
+				Your session ended. Your last unsaved edits were not kept.
+				<Button size="sm" variant="secondary" href={signInUrl}>Sign in again</Button>
+			</Alert>
+		{:else if session.status === 'revoked'}
+			<Alert tone="danger" class="mx-3 mb-2">No access: you can no longer open this workbook. Your last unsaved edits were not kept.</Alert>
 		{/if}
 		{#if !session.view}
 			<div class="flex flex-1 items-center justify-center"><Spinner /></div>

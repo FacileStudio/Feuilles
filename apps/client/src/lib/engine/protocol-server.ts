@@ -1,12 +1,16 @@
-import { FrameType, type ClientFrame, type Cursor, type PresenceEntry, type RoleValue } from './protocol';
+import { FrameType, ORIGIN_BYTES, type ClientFrame, type Cursor, type PresenceEntry, type RoleValue } from './protocol';
 import { frame, need, parseJson, ProtocolError, utf8 } from './wire';
 
-/** Encodes INIT: `0x10`, `seq: u64`, `client_id: u32`, `role: u8`, snapshot. */
-export function encodeInit(seq: number, clientId: number, role: RoleValue, snapshot: Uint8Array): Uint8Array<ArrayBuffer> {
-	const { bytes, view } = frame(FrameType.Init, 13, snapshot);
-	view.setBigUint64(1, BigInt(seq));
-	view.setUint32(9, clientId);
-	view.setUint8(13, role);
+/** The head of an INIT frame. `acked` is the highest `client_seq` accepted from the socket's origin. */
+export type InitHead = { seq: number; clientId: number; role: RoleValue; acked: number };
+
+/** Encodes INIT: `0x10`, `seq: u64`, `client_id: u32`, `role: u8`, `acked: u32`, snapshot. */
+export function encodeInit(head: InitHead, snapshot: Uint8Array): Uint8Array<ArrayBuffer> {
+	const { bytes, view } = frame(FrameType.Init, 17, snapshot);
+	view.setBigUint64(1, BigInt(head.seq));
+	view.setUint32(9, head.clientId);
+	view.setUint8(13, head.role);
+	view.setUint32(14, head.acked);
 	return bytes;
 }
 
@@ -40,6 +44,9 @@ export function decodeClientFrame(bytes: Uint8Array): ClientFrame {
 		}
 		case FrameType.Cursor:
 			return { type: 'cursor', cursor: parseJson<Cursor>(bytes.subarray(1), 'CURSOR') };
+		case FrameType.Hello:
+			if (bytes.length !== 1 + ORIGIN_BYTES) throw new ProtocolError('HELLO carries exactly 16 bytes');
+			return { type: 'hello', origin: bytes.slice(1) };
 		default:
 			throw new ProtocolError(`unknown client frame type ${bytes[0]}`);
 	}

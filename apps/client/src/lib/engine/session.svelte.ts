@@ -2,6 +2,7 @@ import type { Model } from '@ironcalc/wasm';
 import {
 	decodeServerFrame,
 	encodeCursor,
+	encodeHello,
 	encodePush,
 	Role,
 	type Cursor,
@@ -12,13 +13,20 @@ import {
 import { Replica, type Pending } from './replica';
 import { browserSocket, defaultClock, type Clock, type SessionSocket } from './socket';
 
-/** Where a session stands. `revoked` means the server removed this person from the workbook. */
+/**
+ * Where a session stands. `revoked` means the server closed with 1008: the session is gone
+ * (`signed_out`) or the person has no access to the workbook (`no_access`). Either way it stops.
+ */
 export type SessionStatus = 'connecting' | 'open' | 'reconnecting' | 'revoked' | 'closed';
+
+/** Why a session was revoked. */
+export type RevokedReason = 'signed_out' | 'no_access';
 
 /** How a session reaches the outside world. Tests replace every part. */
 export type SessionOptions = {
 	url: string;
 	load: (bytes: Uint8Array) => Model;
+	origin: Uint8Array;
 	open?: (url: string) => SessionSocket;
 	clock?: Clock;
 };
@@ -27,7 +35,8 @@ export type SessionOptions = {
 export const MAX_PUSH_BYTES = 1024 * 1024;
 const KEEPALIVE_MS = 25_000;
 const CURSOR_MS = 100;
-const POLICY_VIOLATION = 1008;
+/** Close codes from `docs/api.md` the session acts on. */
+export const CloseCode = { GoingAway: 1001, Policy: 1008, TooBig: 1009, Restart: 1012, TryAgainLater: 1013 } as const;
 const homeCursor: Cursor = { sheet: 0, row: 1, column: 1, range: [1, 1, 1, 1] };
 
 /**
@@ -40,9 +49,11 @@ export class Session {
 	presence = $state.raw<PresenceEntry[]>([]);
 	revision = $state(0);
 	notice = $state<string | null>(null);
+	revokedReason = $state<RevokedReason | null>(null);
 	replica = $state.raw<Replica<Model> | null>(null);
 	private socket: SessionSocket | null = null;
 	private attempts = 0;
+	private dropOversized = false;
 	private retry: unknown = null;
 	private keepalive: unknown = null;
 	private cursorTimer: unknown = null;
@@ -124,7 +135,8 @@ export class Session {
 		socket.onmessage = (event) => {
 			if (event.data instanceof ArrayBuffer) this.receive(new Uint8Array(event.data));
 		};
-		socket.onclose = (event) => this.closed(socket, event.code);
+		socket.onclose = (event) => this.closed(socket, event.code, event.reason ?? '');
+		socket.onopen = () => socket.send(encodeHello(this.options.origin));
 	}
 
 	private receive(bytes: Uint8Array): void {
@@ -143,9 +155,7 @@ export class Session {
 	}
 
 	private init(frame: Extract<ServerFrame, { type: 'init' }>): void {
-		const resend = this.replica
-			? this.replica.reset(frame.snapshot, frame.seq, frame.clientId)
-			: this.first(frame);
+		const resend = this.replica ? this.again(frame) : this.first(frame);
 		this.role = frame.role;
 		this.status = 'open';
 		this.attempts = 0;
@@ -157,8 +167,15 @@ export class Session {
 	}
 
 	private first(frame: Extract<ServerFrame, { type: 'init' }>): Pending[] {
-		this.replica = new Replica(this.options.load, frame.snapshot, frame.seq, frame.clientId);
+		this.replica = new Replica(this.options.load, frame.snapshot, frame);
 		return [];
+	}
+
+	private again(frame: Extract<ServerFrame, { type: 'init' }>): Pending[] {
+		const { resend, dropped } = this.replica!.reset(frame.snapshot, frame, this.dropOversized);
+		this.dropOversized = false;
+		if (dropped) this.notice = 'too_large';
+		return resend;
 	}
 
 	private refused(clientSeq: number, reason: string): void {
@@ -181,19 +198,25 @@ export class Session {
 		this.socket?.close(1000);
 	}
 
-	private closed(socket: SessionSocket, code: number): void {
+	private closed(socket: SessionSocket, code: number, reason: string): void {
 		if (socket !== this.socket || this.status === 'closed') return;
 		this.stopTimers();
 		this.socket = null;
 		this.presence = [];
-		if (code === POLICY_VIOLATION) {
+		if (code === CloseCode.Policy) {
 			this.status = 'revoked';
+			this.revokedReason = reason === 'unauthenticated' ? 'signed_out' : 'no_access';
 			return;
 		}
+		if (code === CloseCode.TooBig) this.dropOversized = true;
 		this.status = 'reconnecting';
+		this.retry = this.clock.setTimeout(() => this.connect(), code === CloseCode.Restart ? 0 : this.backoff());
+	}
+
+	private backoff(): number {
 		const delay = Math.min(10_000, 500 * 2 ** this.attempts) * (0.5 + this.clock.random() / 2);
 		this.attempts += 1;
-		this.retry = this.clock.setTimeout(() => this.connect(), delay);
+		return delay;
 	}
 
 	private stopTimers(): void {

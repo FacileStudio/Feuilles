@@ -26,7 +26,7 @@ function newWorkbook(title: string): Workbook {
 		locale: 'en',
 		timezone: 'UTC',
 		language: 'en',
-		sheets: [{ name: 'Sheet1' }],
+		sheets: [{ index: 0, name: 'Sheet1', used_range: null }],
 		created_at: now,
 		updated_at: now,
 		trashed_at: null,
@@ -63,7 +63,7 @@ async function workbookRoute(request: Request, id: string, action: string | unde
 async function route(request: Request, url: URL): Promise<Response> {
 	const path = url.pathname;
 	if (path === '/version') return json({ version: 'mock', engine: '0.9.1' });
-	if (path === '/api/auth/session') return json({ user: { email: 'mock@facile.studio', name: 'Mock person' } });
+	if (path === '/api/auth/session') return json({ user: { id: 1, email: 'mock@facile.studio', name: 'Mock person' } });
 	if (path === '/api/spaces') return json({ spaces: [] });
 	if (path === '/api/workbooks' && request.method === 'GET') {
 		const trashed = url.searchParams.get('trashed') === 'true';
@@ -89,16 +89,16 @@ Bun.serve<{ workbook: string; clientId: number; name: string }>({
 		return route(request, url);
 	},
 	websocket: {
-		open(socket: Socket) {
-			const entry = roomFor(socket.data.workbook);
-			socket.data.clientId = entry.room.join((frame) => socket.send(frame));
-			entry.people.set(socket.data.clientId, { socket, cursor: null });
-			broadcastPresence(socket.data.workbook);
-		},
+		open() {},
 		message(socket: Socket, message) {
 			const bytes = typeof message === 'string' ? new TextEncoder().encode(message) : new Uint8Array(message);
 			const entry = roomFor(socket.data.workbook);
 			const frame = decodeClientFrame(bytes);
+			if (frame.type === 'hello') {
+				socket.data.clientId = entry.room.join((data) => socket.send(data), frame.origin);
+				entry.people.set(socket.data.clientId, { socket, cursor: null });
+				return broadcastPresence(socket.data.workbook);
+			}
 			if (frame.type === 'push') return entry.room.receive(socket.data.clientId, bytes);
 			const person = entry.people.get(socket.data.clientId);
 			if (person) person.cursor = frame.cursor;

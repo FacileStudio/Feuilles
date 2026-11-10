@@ -20,7 +20,7 @@ beforeAll(loadEngineSync);
 beforeEach(() => {
 	room = new FakeRoom(load, emptySnapshot());
 	peer = new Peer(room, load);
-	peer.link.receive();
+	peer.join();
 	commands = new GridCommands(peer.session);
 });
 

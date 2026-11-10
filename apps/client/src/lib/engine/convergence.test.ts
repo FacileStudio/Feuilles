@@ -52,7 +52,7 @@ function runCase(seed: number) {
 	const int = (n: number) => Math.floor(random() * n);
 	const pick: Pick = (items) => items[int(items.length)];
 	const room = new FakeRoom(load, emptySnapshot());
-	const peers = Array.from({ length: CLIENTS }, () => new Peer(room, load, random));
+	const peers = Array.from({ length: CLIENTS }, () => new Peer(room, load, { random }));
 	const steps = 1 + int(MAX_STEPS);
 	for (let i = 0; i < steps; i += 1) {
 		const peer = pick(peers);
@@ -84,13 +84,15 @@ const hex = (bytes: Uint8Array) => Buffer.from(bytes).toString('hex');
 describe('Session convergence under random interleavings (plan 7.1)', () => {
 	beforeAll(loadEngineSync);
 
-	it(`${CASES} cases: every confirmed model equals the server, idle views equal confirmed`, () => {
-		const totals = { rejected: 0, reconnects: 0, accepted: 0 };
+	it(`${CASES} cases: every confirmed model equals the server, idle views equal confirmed, no batch applied twice`, () => {
+		const totals = { rejected: 0, reconnects: 0, accepted: 0, ackedJoins: 0 };
 		for (let seed = 1; seed <= CASES; seed += 1) {
 			const { room, peers } = runCase(seed);
 			drain(peers);
 			totals.rejected += room.rejected;
 			totals.accepted += room.seq;
+			totals.ackedJoins += room.ackedJoins;
+			expect(room.resent, `seed ${seed} resent an acknowledged batch`).toBe(0);
 			totals.reconnects += peers.reduce((sum, peer) => sum + peer.links.length - 1, 0);
 			const server = hex(room.model.toBytes());
 			for (const [index, peer] of peers.entries()) {
@@ -106,5 +108,6 @@ describe('Session convergence under random interleavings (plan 7.1)', () => {
 		expect(totals.accepted).toBeGreaterThan(0);
 		expect(totals.rejected).toBeGreaterThan(0);
 		expect(totals.reconnects).toBeGreaterThan(0);
+		expect(totals.ackedJoins).toBeGreaterThan(0);
 	}, 600_000);
 });

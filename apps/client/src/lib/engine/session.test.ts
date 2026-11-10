@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { emptySnapshot, load, loadEngineSync } from '../dev/engine-node';
-import { Peer } from '../dev/network';
+import { Peer, pushSeqs } from '../dev/network';
 import { FakeRoom } from '../dev/room';
 import { FrameType, Role } from './protocol';
 import { encodeInit, encodePresence, encodeReject, encodeUpdate } from './protocol-server';
@@ -8,12 +8,9 @@ import { encodeInit, encodePresence, encodeReject, encodeUpdate } from './protoc
 const hex = (bytes: Uint8Array) => Buffer.from(bytes).toString('hex');
 let room: FakeRoom;
 
-function joined(role: (typeof Role)[keyof typeof Role] = Role.Editor): Peer {
-	const peer = new Peer(room, load);
-	peer.link.downstream = [];
-	room.leave(peer.link.clientId);
-	peer.link.clientId = room.join((frame) => peer.link.downstream.push(frame), role);
-	peer.link.receive();
+function joined(role: (typeof Role)[keyof typeof Role] = Role.Editor, origin?: Uint8Array): Peer {
+	const peer = new Peer(room, load, { role, origin });
+	peer.join();
 	peer.link.upstream = [];
 	return peer;
 }
@@ -82,7 +79,7 @@ describe('Session', () => {
 		expect(bob.session.view!.getFormattedCellValue(0, 2, 1)).toBe('6');
 	});
 
-	it('reconnects after a drop and resends pending batches with new client_seq values', () => {
+	it('reconnects after a drop and resends unacknowledged batches under their own client_seq', () => {
 		const peer = joined();
 		peer.session.edit((model) => model.setUserInput(0, 1, 1, 'a'));
 		peer.session.edit((model) => model.setUserInput(0, 1, 2, 'b'));
@@ -90,11 +87,9 @@ describe('Session', () => {
 		expect(peer.session.status).toBe('reconnecting');
 		peer.session.edit((model) => model.setUserInput(0, 1, 3, 'c'));
 		peer.clock.advance(1_000);
-		peer.link.receive();
-		const pushes = peer.link.upstream.filter((frame) => frame[0] === FrameType.Push);
-		expect(pushes.map((frame) => new DataView(frame.buffer).getUint32(1))).toEqual([1, 2, 3]);
-		while (peer.link.upstream.length) peer.link.deliver();
-		while (peer.link.downstream.length) peer.link.receive();
+		peer.join();
+		expect(pushSeqs(peer.link.upstream)).toEqual([1, 2, 3]);
+		peer.settle();
 		expect(room.model.getCellContent(0, 1, 3)).toBe('c');
 		expect(peer.session.replica!.pending).toEqual([]);
 	});
@@ -105,15 +100,16 @@ describe('Session', () => {
 		peer.link.receive();
 		expect(peer.session.status).toBe('reconnecting');
 		peer.clock.advance(1_000);
-		peer.link.receive();
+		peer.join();
 		expect(peer.session.status).toBe('open');
 	});
 
 	it('stops for good when the server closes with 1008', () => {
 		const peer = joined();
-		peer.link.drop(1008);
+		peer.link.onclose?.({ code: 1008, reason: 'not_found' });
 		peer.clock.advance(60_000);
 		expect(peer.session.status).toBe('revoked');
+		expect(peer.session.revokedReason).toBe('no_access');
 		expect(peer.links).toHaveLength(1);
 		expect(peer.session.canEdit).toBe(false);
 	});
@@ -158,7 +154,7 @@ describe('Session', () => {
 		const peer = joined();
 		const other = new FakeRoom(load, emptySnapshot());
 		other.write((model) => model.setUserInput(0, 1, 1, 'fresh'));
-		peer.link.downstream.push(encodeInit(other.seq, 4, Role.Editor, other.model.toBytes()));
+		peer.link.downstream.push(encodeInit({ seq: other.seq, clientId: 4, role: Role.Editor, acked: 0 }, other.model.toBytes()));
 		peer.link.receive();
 		expect(peer.session.view!.getCellContent(0, 1, 1)).toBe('fresh');
 		expect(peer.session.replica!.seq).toBe(1);

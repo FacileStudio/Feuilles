@@ -57,6 +57,8 @@ Not covered in v1: picking a reference with the mouse while typing a formula, fo
 - `convergence.test.ts`: 1000 random cases (set `SESSION_CASES` for more). Three sessions, random edits, random delivery order, random dropped connections. At the end every `confirmed` and every `view` equals the server byte for byte, and the fake room, which tracks `acked` per origin like the API, never saw an acknowledged batch again. The test fails within a few seeds if the view rebuild is removed.
 - `backend.test.ts`, `keyboard.test.ts`, `clipboard.test.ts`, `commands.test.ts`, and small pure helpers.
 
+- `e2e/collab.e2e.ts`: the browser end-to-end run against the real API, with `playwright-core` driving two headless Chromium pages. `mise run e2e` from the repo root; see `docs/development.md`.
+
 Checked by hand with two headless Chromium pages against the mock: one types `1`, `2`, `3` and `=SUM(A1:A3)` in A1 to A4 while the other sets A2 to `10`; both show `14` within a second, and a bold set in one page shows in the other.
 
 ## Contract notes

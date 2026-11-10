@@ -25,6 +25,11 @@ run = ["cd apps/api && cargo build --release --locked", "cd apps/client && bun r
 description = "Run the full quality gate"
 run = "sh ./scripts/check.sh"
 
+[tasks.e2e]
+description = "Run the browser end-to-end test: real API, built client, two headless Chromium pages"
+depends = ["db-up"]
+run = "sh ./scripts/e2e.sh"
+
 [tasks.dev]
 description = "Run the API against the dev database"
 env = { DATABASE_URL = "postgres://postgres:postgres@127.0.0.1:5653/feuilles?sslmode=disable", PORT = "4000" }

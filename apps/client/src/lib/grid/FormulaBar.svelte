@@ -15,10 +15,11 @@
 	const selected = $derived.by(() => {
 		void session.revision;
 		const view = session.view;
-		if (!view) return { address: '', content: '' };
+		if (!view) return { address: '', content: '', value: '' };
 		const { sheet, row, column, range } = view.getSelectedView();
 		const area = { rowStart: range[0], columnStart: range[1], rowEnd: range[2], columnEnd: range[3] };
-		return { address: getCellAddress(area, { row, column }), content: view.getCellContent(sheet, row, column) };
+		const address = getCellAddress(area, { row, column });
+		return { address, content: view.getCellContent(sheet, row, column), value: view.getFormattedCellValue(sheet, row, column) };
 	});
 
 	function focus() {
@@ -37,6 +38,7 @@
 
 <div class="flex h-10 shrink-0 items-center gap-3 bg-fc-component px-3">
 	<span class="w-20 shrink-0 truncate font-fc-mono text-fc-sm text-fc-fg-muted" aria-label="Selected cell">{selected.address}</span>
+	<output class="sr-only" aria-label="Value of the selected cell">{selected.value}</output>
 	<input
 		class="bare h-8 min-w-0 flex-1 rounded-fc-sm bg-transparent px-2 font-fc-mono text-fc-sm text-fc-fg outline-none focus-visible:bg-fc-bg"
 		aria-label="Formula"

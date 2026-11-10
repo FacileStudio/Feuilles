@@ -62,7 +62,7 @@ Full reference: [docs/configuration.md](docs/configuration.md).
 ```
 apps/
   api/       Rust API: auth (porte), engine (IronCalc), hub (rooms), modules, mcp, tests
-  client/    SvelteKit client (built on the feat/client branch)
+  client/    SvelteKit client, served by the API from CLIENT_DIR
 docs/        Architecture, configuration, development, deployment, API
 scripts/     The gate, the dev database, the version stamp, the deploy check
 spikes/      F0 collaboration spike, not shipped

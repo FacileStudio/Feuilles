@@ -2,6 +2,38 @@
 
 All notable changes to Feuilles. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.4.0] - 2026-11-10
+
+### Added
+
+- The SvelteKit client (`apps/client`), merged from `feat/client`: workbook list, trash,
+  settings, and the grid on IronCalc's vendored canvas. `check.sh` gates it (`bun run check`,
+  `test`, `build`) and filet requires `apps/client` again
+- A browser end-to-end run (`mise run e2e`): the real API on a scratch database, the built
+  client, two headless Chromium pages; `check.sh` runs it, or skips it with a message when
+  Chromium or `TEST_DATABASE_URL` is missing
+- The grid announces the selected cell's displayed value to assistive technology
+
+### Changed
+
+- The client speaks the protocol of `docs/api.md`: HELLO with a per-workbook origin kept in
+  `sessionStorage` and held with a Web Lock, INIT's `acked` drops batches the server already
+  took, `client_seq` keeps increasing across reconnects, and each close code gets its own
+  behaviour (1008 stops with "no access" or "sign in again", 1012 reconnects at once, 1009 drops
+  the oversized batch). A batch whose echo was lost is never applied twice
+- porte-rs v0.5.0: one tronc, no `[patch]`; porte's verifier serves `/mcp` directly and porte's
+  `find_by_user` resolves the caller's Registre subject
+- The version comes from `apps/client/package.json`, now `0.4.0`
+
+### Fixed
+
+- **Data safety.** A directory snapshot that no longer lists a space used to delete the space
+  and, by cascade, all its workbooks; an empty snapshot deleted everything. Now the space is
+  marked deleted (migration `0005_space_soft_delete.sql`), its members lose access at once
+  (sockets close with 1008), and its workbooks go to the trash, where only the 30-day purge
+  deletes them. A space that comes back is undeleted, its workbooks waiting in the trash. An
+  empty snapshot while spaces exist is refused and logged at error level
+
 ## [0.3.0] - 2026-11-10
 
 ### Added

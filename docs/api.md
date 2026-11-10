@@ -91,7 +91,7 @@ task.
 `PUT /cells` and the MCP writes go through the workbook's room as client 0: open sockets receive
 them as `UPDATE` frames.
 
-Other routes: `GET /version` answers `{"version":"v0.3.0","engine":"0.9.1"}`; `GET /health` and
+Other routes: `GET /version` answers `{"version":"v0.4.0","engine":"0.9.1"}`; `GET /health` and
 `GET /ready` (also under `/api`) answer `{"status":"ok"}` and `{"status":"ready"}`.
 
 ## WebSocket protocol

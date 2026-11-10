@@ -29,7 +29,7 @@ One container, one replica. Rooms live in memory, so two replicas would split a 
 | `apps/api/src/hub/` | Rooms: shards, the batch path, snapshots, presence, the frame codec |
 | `apps/api/src/modules/workbooks/` | Routes, the `access()` rules, the row store, the update log |
 | `apps/api/src/modules/live/` | The WebSocket route and the socket loop |
-| `apps/api/src/mcp/` | The six MCP tools and the porte verifier adapter |
+| `apps/api/src/mcp/` | The six MCP tools, with porte's `mcpauth::Verifier` as the token check |
 | `apps/api/src/reference/` | The `/docs` table |
 | `apps/api/src/upgrade.rs` | `engine-export` and `engine-verify` |
 

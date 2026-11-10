@@ -90,16 +90,3 @@ impl Seeder for Members {
         tx.commit().await.map_err(failed)
     }
 }
-
-/// The Registre subject of a signed-in user: their identity under `issuer`, if they have one.
-pub async fn subject_of(pool: &PgPool, issuer: &str, user_id: i64) -> Result<Option<String>, tronc::Error> {
-    if issuer.is_empty() {
-        return Ok(None);
-    }
-    sqlx::query_scalar("SELECT subject FROM porte_identities WHERE provider = $1 AND user_id = $2 LIMIT 1")
-        .bind(issuer)
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| tronc::Error::internal("look up the caller's subject", e))
-}

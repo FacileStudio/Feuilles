@@ -18,7 +18,7 @@ use porte::session::{self, Manager};
 use sqlx::PgPool;
 
 pub use deletions::{AppData, DeletionState, erase_person};
-pub use members::{Members, subject_of};
+pub use members::Members;
 pub use routes::{Me, SessionAnswer, routes};
 pub use spaces::{Evict, Eviction, SpacesApply, apply_snapshot, local_role};
 
@@ -38,6 +38,19 @@ pub struct Kits {
 }
 
 impl Kits {
+    /// The Registre subject `user_id` signs in with at `issuer`, if they have one. A cookie
+    /// session carries no subject, so this is how membership is keyed for it.
+    pub async fn subject(&self, issuer: &str, user_id: i64) -> Result<Option<String>, tronc::Error> {
+        if issuer.is_empty() {
+            return Ok(None);
+        }
+        match self.store.find_by_user(issuer, user_id).await {
+            Ok((_, subject)) => Ok(Some(subject)),
+            Err(porte::StoreError::NotFound) => Ok(None),
+            Err(error) => Err(tronc::Error::internal("look up the caller's subject", error)),
+        }
+    }
+
     /// Builds the kits. With an issuer this runs OIDC discovery, so a wrong issuer fails the
     /// boot. `evict` hears about everyone who lost access to a workbook.
     pub async fn new(

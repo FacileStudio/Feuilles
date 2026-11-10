@@ -72,7 +72,7 @@ async fn mcp(config: &Config, kits: &Kits) -> Result<Option<Mcp>, porte::ConfigE
     }
     let verifier = porte_verifier(&config.porte, kits, &config.mcp_resource).await?;
     let (resource, issuer) = (config.mcp_resource.clone(), config.porte.issuer.clone());
-    Ok(Some(Mcp { resource, issuer, verifier: std::sync::Arc::new(verifier) }))
+    Ok(Some(Mcp { resource, issuer, verifier }))
 }
 
 fn spawn_tasks(state: &AppState, config: &Config, shutdown: &CancellationToken) {

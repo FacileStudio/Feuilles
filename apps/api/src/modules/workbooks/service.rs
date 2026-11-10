@@ -6,7 +6,6 @@ use tronc::Error;
 use uuid::Uuid;
 
 use super::store::{self, Row};
-use crate::auth::subject_of;
 use crate::state::AppState;
 
 /// What a caller may do to one workbook, weakest first.
@@ -34,7 +33,7 @@ pub struct Caller {
 /// Resolves the caller's Registre subject.
 pub async fn caller(state: &AppState, identity: &Identity) -> Result<Caller, Error> {
     let subject = match identity.subject.is_empty() {
-        true => subject_of(&state.pool, &state.issuer, identity.user_id).await?,
+        true => state.kits.subject(&state.issuer, identity.user_id).await?,
         false => Some(identity.subject.clone()),
     };
     Ok(Caller { user_id: identity.user_id, subject })

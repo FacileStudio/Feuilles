@@ -58,15 +58,14 @@ old bytes, and the browser's `@ironcalc/wasm` must match the server exactly. Nev
 The crates are referenced by local `file://` git URLs while nothing is pushed, so the image
 cannot build on a server. Once the owner pushes the libraries, edit `apps/api/Cargo.toml`:
 
-1. In `[dependencies]` and `[dev-dependencies]`, `git = "file:///home/yann/Code/Facile/tronc-rs/.git"`
+1. In `[dependencies]` and `[dev-dependencies]`, `git = "file:///home/yann/Code/Facile/tronc-rs"`
    becomes `git = "https://github.com/FacileStudio/tronc-rs"`.
 2. In `[dependencies]`, `git = "file:///home/yann/Code/Facile/porte-rs"` becomes
-   `git = "https://github.com/FacileStudio/porte-rs"`, at a porte-rs tag whose own `tronc`
-   dependency is the HTTPS URL at `v0.3.0` or later.
-3. Delete the `[patch."file:///home/yann/Code/Facile/tronc-rs"]` section. It exists only because
-   porte-rs `v0.4.0` depends on tronc `v0.2.0`, and two tronc versions would make
-   `tronc::Error` two different types.
-4. Run `cargo update -p tronc -p porte` and commit `Cargo.lock`.
+   `git = "https://github.com/FacileStudio/porte-rs"`, at a porte-rs tag (`v0.5.0` or later)
+   whose own `tronc` dependency is the same HTTPS URL. Both must name the same tronc source, or
+   `tronc::Error` becomes two different types.
+3. Run `cargo update -p tronc -p porte` and check `cargo tree -i tronc` lists one tronc. Commit
+   `Cargo.lock`.
 
 Then register the app: `Registre/seed.yaml` entry (plan 7.8), the Dokploy environment through
 the `dokploy-env-safe` flow, `deploy-verify` with `VERIFY_URLS=https://feuilles.facile.studio`,

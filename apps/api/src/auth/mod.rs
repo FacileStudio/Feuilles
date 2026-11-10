@@ -18,7 +18,7 @@ use sqlx::PgPool;
 
 pub use deletions::{AppData, DeletionState, erase_person};
 pub use members::{Members, subject_of};
-pub use routes::routes;
+pub use routes::{Me, SessionAnswer, routes};
 pub use spaces::{Evict, Eviction, SpacesApply, apply_snapshot, local_role};
 
 /// Every porte kit the app runs, built once at boot.

@@ -11,6 +11,7 @@ use tokio_util::sync::CancellationToken;
 use crate::auth::Kits;
 use crate::env::Config;
 use crate::hub::Hub;
+use crate::mcp::{Mcp, porte_verifier};
 use crate::modules::live;
 use crate::router::{self, Options};
 use crate::state::AppState;
@@ -46,15 +47,29 @@ pub async fn run(config: Config, args: Vec<String>) -> ExitCode {
     let state = AppState::new(pool, config.porte.issuer.clone(), kits, hub.clone());
     let shutdown = CancellationToken::new();
     spawn_tasks(&state, &config, &shutdown);
-    let mut http = tronc::http::Config::from_core(&config.core);
-    http.security = security::config(&config.client_dir);
-    let app = match router::build_router(state, Options { http, client_dir: config.client_dir.clone() }) {
+    let app = match app(&config, state).await {
         Ok(app) => app,
         Err(error) => return fail("build the router", &error),
     };
     let code = listen(app, config.core.port, shutdown, hub.clone()).await;
     let _ = tokio::task::spawn_blocking(move || hub.shutdown()).await;
     code
+}
+
+async fn app(config: &Config, state: AppState) -> Result<axum::Router, String> {
+    let mut http = tronc::http::Config::from_core(&config.core);
+    http.security = security::config(&config.client_dir);
+    let mcp = mcp(config, &state.kits).await.map_err(|e| format!("build the MCP verifier: {e}"))?;
+    router::build_router(state, Options { http, client_dir: config.client_dir.clone(), mcp })
+}
+
+async fn mcp(config: &Config, kits: &Kits) -> Result<Option<Mcp>, porte::ConfigError> {
+    if config.mcp_resource.is_empty() {
+        return Ok(None);
+    }
+    let verifier = porte_verifier(&config.porte, kits, &config.mcp_resource).await?;
+    let (resource, issuer) = (config.mcp_resource.clone(), config.porte.issuer.clone());
+    Ok(Some(Mcp { resource, issuer, verifier: std::sync::Arc::new(verifier) }))
 }
 
 fn spawn_tasks(state: &AppState, config: &Config, shutdown: &CancellationToken) {

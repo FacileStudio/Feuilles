@@ -10,6 +10,7 @@ use std::net::SocketAddr;
 use axum::Router;
 use uuid::Uuid;
 
+pub mod agent;
 mod frames;
 pub mod sheet;
 pub mod web;
@@ -84,9 +85,13 @@ pub async fn space(state: &AppState, members: &[(&Person, &str)]) -> String {
 }
 
 pub async fn serve(state: AppState) -> SocketAddr {
-    let router = api::router::build_router(state, api::router::Options::default()).expect("router");
+    serve_with(state, |_| api::router::Options::default()).await
+}
+
+pub async fn serve_with(state: AppState, options: impl FnOnce(SocketAddr) -> api::router::Options) -> SocketAddr {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let addr = listener.local_addr().expect("addr");
+    let router = api::router::build_router(state, options(addr)).expect("router");
     let service = router.into_make_service_with_connect_info::<SocketAddr>();
     tokio::spawn(async move { axum::serve(listener, service).await.expect("serve") });
     addr

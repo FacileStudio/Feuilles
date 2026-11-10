@@ -1,5 +1,6 @@
 //! Workbooks: the list, the files, the cells, and the access rules over all of them.
 
+pub mod actions;
 mod cells;
 mod files;
 mod handlers;

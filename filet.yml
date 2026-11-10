@@ -37,10 +37,7 @@ limits:
   interfaceMethods: 4
 
 architecture:
-  # Capsule requires [apps/api, apps/client]. apps/client is built on the
-  # feat/client branch and is not on main until that branch merges; the merge
-  # adds it back to this list.
-  requiredDirs: [apps/api]
+  requiredDirs: [apps/api, apps/client]
   # A module that owns HTTP declares it in router.rs (plan section 2.1).
   requiredFiles:
     "apps/api/src/modules/*": [mod.rs, router.rs]

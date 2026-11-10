@@ -24,13 +24,10 @@ echo "==> apps/api"
 )
 
 echo "==> apps/client"
-if [ ! -f apps/client/package.json ]; then
-  echo "check: apps/client is not on this branch, skipping the client" >&2
-  exit 0
-fi
 (
   cd apps/client
   [ -d node_modules ] || bun install --frozen-lockfile >/dev/null
   bun run check
   bun run test
+  bun run build
 )

@@ -1,6 +1,6 @@
 import type { CellLink, CellStyle, MergedCell, Model } from "@ironcalc/wasm";
 import { columnNameFromNumber } from "@ironcalc/wasm";
-import { getColor } from "../Editor/util";
+import { getColor } from "../../../palette";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
 import { CellLinks, type LinkHoverCell } from "./cellLinks";

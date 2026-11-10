@@ -1,0 +1,8 @@
+{
+  "name": "collab-spike-js",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@ironcalc/wasm": "0.9.1"
+  }
+}

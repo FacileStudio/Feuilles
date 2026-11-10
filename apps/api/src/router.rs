@@ -26,6 +26,7 @@ pub fn api(state: &AppState) -> Router<AppState> {
         .merge(state.kits.oidc.routes())
         .merge(modules::spaces::routes(sessions))
         .merge(modules::workbooks::routes(sessions))
+        .merge(modules::live::routes(sessions))
         .route("/registre/sync", state.kits.syncer.nudge_route())
         .route("/registre/deletions", state.kits.deletions.route())
         .fallback(|| async { tronc::Error::not_found("no such route") })

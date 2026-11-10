@@ -17,9 +17,10 @@ pub struct CellWrite {
     pub input: String,
 }
 
-/// Sets every input, evaluates once, and returns the batch. Every address is checked before
-/// the first write, but a failure can still leave `model` half-written: drop it then.
-pub fn apply_writes(model: &mut Model, writes: &[CellWrite]) -> Result<Vec<u8>, Error> {
+/// Sets every input and evaluates once. Every address is checked before the first write, but
+/// a failure can still leave `model` half-written: drop it then. The batch is the next
+/// `flush_send_queue()`.
+pub fn set_inputs(model: &mut Model, writes: &[CellWrite]) -> Result<(), Error> {
     let sheets = u32::try_from(model.get_model().workbook.worksheets.len()).unwrap_or(u32::MAX);
     if let Some(bad) = writes.iter().find(|w| w.sheet >= sheets) {
         return Err(Error::not_found(format!("sheet {} does not exist", bad.sheet)));
@@ -33,17 +34,17 @@ pub fn apply_writes(model: &mut Model, writes: &[CellWrite]) -> Result<Vec<u8>, 
     model.resume_evaluation();
     applied.map_err(Error::invalid)?;
     model.evaluate();
-    Ok(model.flush_send_queue())
+    Ok(())
 }
 
-/// Adds a sheet at the end, named `name` when given, and returns the batch and its index.
-pub fn add_sheet(model: &mut Model, name: Option<&str>) -> Result<(Vec<u8>, u32), Error> {
+/// Adds a sheet at the end, named `name` when given, and returns its index.
+pub fn new_sheet(model: &mut Model, name: Option<&str>) -> Result<u32, Error> {
     model.new_sheet().map_err(Error::invalid)?;
     let index = u32::try_from(model.get_model().workbook.worksheets.len() - 1).unwrap_or(0);
     if let Some(name) = name.map(str::trim).filter(|name| !name.is_empty()) {
         model.rename_sheet(index, name).map_err(Error::invalid)?;
     }
-    Ok((model.flush_send_queue(), index))
+    Ok(index)
 }
 
 #[cfg(test)]
@@ -59,8 +60,8 @@ mod tests {
     fn writes_become_one_batch_another_model_can_replay() {
         let mut model = new_model("Book", "en", "UTC", "en").expect("model");
         let mut other = new_model("Book", "en", "UTC", "en").expect("model");
-        let batch = apply_writes(&mut model, &[write(0, 1, 1, "20"), write(0, 1, 2, "=A1+1")]).expect("writes");
-        other.apply_external_diffs(&batch).expect("replay");
+        set_inputs(&mut model, &[write(0, 1, 1, "20"), write(0, 1, 2, "=A1+1")]).expect("writes");
+        other.apply_external_diffs(&model.flush_send_queue()).expect("replay");
         assert_eq!(other.get_formatted_cell_value(0, 1, 2).expect("value"), "21");
         assert_eq!(model.to_bytes(), other.to_bytes());
     }
@@ -70,20 +71,19 @@ mod tests {
         let mut model = new_model("Book", "en", "UTC", "en").expect("model");
         let before = model.to_bytes();
         assert_eq!(
-            apply_writes(&mut model, &[write(0, 1, 1, "1"), write(2, 1, 1, "x")]).unwrap_err().code,
+            set_inputs(&mut model, &[write(0, 1, 1, "1"), write(2, 1, 1, "x")]).unwrap_err().code,
             tronc::Code::NotFound
         );
-        assert!(apply_writes(&mut model, &[write(0, 0, 1, "x")]).is_err());
-        assert!(apply_writes(&mut model, &[write(0, 1, MAX_COLUMN + 1, "x")]).is_err());
+        assert!(set_inputs(&mut model, &[write(0, 0, 1, "x")]).is_err());
+        assert!(set_inputs(&mut model, &[write(0, 1, MAX_COLUMN + 1, "x")]).is_err());
         assert_eq!(model.to_bytes(), before);
     }
 
     #[test]
     fn a_new_sheet_takes_its_name() {
         let mut model = new_model("Book", "en", "UTC", "en").expect("model");
-        let (batch, index) = add_sheet(&mut model, Some("Budget")).expect("sheet");
-        assert_eq!(index, 1);
-        assert!(!batch.is_empty());
+        assert_eq!(new_sheet(&mut model, Some("Budget")).expect("sheet"), 1);
+        assert!(!model.flush_send_queue().is_empty());
         assert_eq!(model.get_model().workbook.worksheets[1].get_name(), "Budget");
     }
 }

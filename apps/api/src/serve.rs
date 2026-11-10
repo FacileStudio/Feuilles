@@ -3,14 +3,15 @@
 use std::future::IntoFuture;
 use std::net::SocketAddr;
 use std::process::ExitCode;
-use std::sync::Arc;
 use std::time::Duration;
 
 use sqlx::PgPool;
 use tokio_util::sync::CancellationToken;
 
-use crate::auth::{Evict, Kits};
+use crate::auth::Kits;
 use crate::env::Config;
+use crate::hub::Hub;
+use crate::modules::live;
 use crate::router::{self, Options};
 use crate::state::AppState;
 use crate::{MIGRATOR, purge, security};
@@ -37,12 +38,12 @@ pub async fn run(config: Config, args: Vec<String>) -> ExitCode {
     if let Err(error) = tronc::migrate::run(&pool, &MIGRATOR).await {
         return fail("migrate", &error);
     }
-    let evict: Evict = Arc::new(|evictions| tracing::info!(count = evictions.len(), "directory: access removed"));
-    let kits = match Kits::new(&config.porte, &pool, &config.token_key, evict).await {
+    let hub = Hub::start(pool.clone(), tokio::runtime::Handle::current(), Hub::default_shards());
+    let kits = match Kits::new(&config.porte, &pool, &config.token_key, live::evictor(hub.clone())).await {
         Ok(kits) => kits,
         Err(error) => return fail("build the auth kits", &error),
     };
-    let state = AppState::new(pool, config.porte.issuer.clone(), kits);
+    let state = AppState::new(pool, config.porte.issuer.clone(), kits, hub.clone());
     let shutdown = CancellationToken::new();
     spawn_tasks(&state, &config, &shutdown);
     let mut http = tronc::http::Config::from_core(&config.core);
@@ -51,7 +52,9 @@ pub async fn run(config: Config, args: Vec<String>) -> ExitCode {
         Ok(app) => app,
         Err(error) => return fail("build the router", &error),
     };
-    listen(app, config.core.port, shutdown).await
+    let code = listen(app, config.core.port, shutdown, hub.clone()).await;
+    let _ = tokio::task::spawn_blocking(move || hub.shutdown()).await;
+    code
 }
 
 fn spawn_tasks(state: &AppState, config: &Config, shutdown: &CancellationToken) {
@@ -66,7 +69,7 @@ fn spawn_tasks(state: &AppState, config: &Config, shutdown: &CancellationToken) 
     tokio::spawn(async move { deletions.run(two).await });
 }
 
-async fn listen(app: axum::Router, port: u16, shutdown: CancellationToken) -> ExitCode {
+async fn listen(app: axum::Router, port: u16, shutdown: CancellationToken, hub: Hub) -> ExitCode {
     let listener = match tokio::net::TcpListener::bind(("0.0.0.0", port)).await {
         Ok(listener) => listener,
         Err(error) => return fail("listen", &error),
@@ -78,6 +81,7 @@ async fn listen(app: axum::Router, port: u16, shutdown: CancellationToken) -> Ex
     let stopping = shutdown.clone();
     tokio::spawn(async move {
         signal().await;
+        let _ = tokio::task::spawn_blocking(move || hub.shutdown()).await;
         stopping.cancel();
     });
     let deadline = async move {

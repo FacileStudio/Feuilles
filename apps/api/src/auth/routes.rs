@@ -17,6 +17,9 @@ pub struct Me {
     pub email: String,
     /// The display name.
     pub name: String,
+    /// Registre's picture, absent when there is none.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub avatar_url: String,
 }
 
 /// `GET /auth/session`: the account, or null without a session.
@@ -34,13 +37,19 @@ pub fn routes(sessions: &Manager) -> Router<AppState> {
 }
 
 async fn account(state: &AppState, identity: &Identity) -> Result<Me, tronc::Error> {
-    let row: Option<(String, String)> = sqlx::query_as("SELECT email, name FROM porte_users WHERE id = $1")
-        .bind(identity.user_id)
-        .fetch_optional(&state.pool)
-        .await
-        .map_err(|e| tronc::Error::internal("read the account", e))?;
-    let (email, name) = row.ok_or_else(|| tronc::Error::unauthorized("invalid session"))?;
-    Ok(Me { id: identity.user_id, email, name })
+    let row: Option<(String, String, String)> = sqlx::query_as(
+        "SELECT u.email, u.name, COALESCE(NULLIF(u.avatar_url, ''), (SELECT m.picture FROM space_members m
+             JOIN porte_identities i ON i.subject = m.subject AND i.provider = $2
+             WHERE i.user_id = u.id AND m.picture <> '' LIMIT 1), '')
+         FROM porte_users u WHERE u.id = $1",
+    )
+    .bind(identity.user_id)
+    .bind(&state.issuer)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|e| tronc::Error::internal("read the account", e))?;
+    let (email, name, avatar_url) = row.ok_or_else(|| tronc::Error::unauthorized("invalid session"))?;
+    Ok(Me { id: identity.user_id, email, name, avatar_url })
 }
 
 async fn me(State(state): State<AppState>, identity: Identity) -> Result<Json<Me>, tronc::Error> {

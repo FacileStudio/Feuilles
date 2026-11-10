@@ -3,6 +3,7 @@ use std::time::Duration;
 use time::OffsetDateTime;
 use tokio_util::sync::CancellationToken;
 
+use crate::modules::live;
 use crate::modules::workbooks::store;
 use crate::state::AppState;
 
@@ -15,7 +16,9 @@ pub const INTERVAL: Duration = Duration::from_secs(3600);
 /// Deletes the workbooks trashed more than [`RETENTION`] ago, and returns how many.
 pub async fn purge_once(state: &AppState) -> Result<usize, tronc::Error> {
     let ids = store::purge(&state.pool, OffsetDateTime::now_utc() - RETENTION).await?;
-    Ok(ids.len())
+    let count = ids.len();
+    live::close(&state.hub, ids);
+    Ok(count)
 }
 
 /// Runs [`purge_once`] at boot and every hour until `shutdown`. One replica runs it.

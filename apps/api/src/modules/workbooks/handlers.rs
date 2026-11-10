@@ -10,6 +10,7 @@ use super::service::{self, Access, parse_id, require, space_scope};
 use super::store::{self, NewRow};
 use super::types::{CreateWorkbook, ListQuery, RenameWorkbook, Workbook, WorkbookList};
 use crate::engine;
+use crate::modules::live;
 use crate::state::AppState;
 
 /// `GET /workbooks`.
@@ -79,6 +80,7 @@ pub async fn trash(
 ) -> Result<StatusCode, Error> {
     let (row, _) = require(&state, &identity, parse_id(&id)?, Access::Manager).await?;
     store::update(&state.pool, row.id, "trashed_at = COALESCE(trashed_at, now())", None).await?;
+    live::reopen(&state, row.id);
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -90,6 +92,7 @@ pub async fn restore(
 ) -> Result<Json<Workbook>, Error> {
     let (row, _) = require(&state, &identity, parse_id(&id)?, Access::Manager).await?;
     let row = store::update(&state.pool, row.id, "trashed_at = NULL", None).await?;
+    live::reopen(&state, row.id);
     let sheets = model::sheets(&state, row.id).await?;
     Ok(Json(row.into_workbook(sheets)))
 }
@@ -102,5 +105,6 @@ pub async fn delete_forever(
 ) -> Result<StatusCode, Error> {
     let (row, _) = require(&state, &identity, parse_id(&id)?, Access::Manager).await?;
     store::delete_trashed(&state.pool, row.id).await?;
+    live::close(&state.hub, [row.id]);
     Ok(StatusCode::NO_CONTENT)
 }

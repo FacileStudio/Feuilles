@@ -5,6 +5,7 @@
 pub mod auth;
 pub mod engine;
 pub mod env;
+pub mod hub;
 pub mod modules;
 pub mod purge;
 pub mod router;

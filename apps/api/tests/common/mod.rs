@@ -1,14 +1,19 @@
 #![allow(dead_code)]
 
-use std::sync::Arc;
-
-use api::auth::{Evict, Kits};
+use api::auth::Kits;
+use api::hub::{Hub, Limits};
+use api::modules::live::evictor;
 use api::router::{self, Options};
 use api::state::AppState;
+use std::net::SocketAddr;
+
 use axum::Router;
 use uuid::Uuid;
 
+mod frames;
+pub mod sheet;
 pub mod web;
+pub mod ws;
 
 pub const ISSUER: &str = "https://sso.test";
 
@@ -24,10 +29,14 @@ pub struct Person {
 }
 
 pub async fn state() -> Option<AppState> {
+    state_with(Limits::default()).await
+}
+
+pub async fn state_with(limits: Limits) -> Option<AppState> {
     let pool = tronc::testdb::pool("feuilles", &api::MIGRATOR).await?;
-    let evict: Evict = Arc::new(|_| {});
-    let kits = Kits::new(&porte::Config::default(), &pool, "", evict).await.expect("kits");
-    Some(AppState::new(pool, ISSUER.to_owned(), kits))
+    let hub = Hub::with_limits(pool.clone(), tokio::runtime::Handle::current(), 2, limits);
+    let kits = Kits::new(&porte::Config::default(), &pool, "", evictor(hub.clone())).await.expect("kits");
+    Some(AppState::new(pool, ISSUER.to_owned(), kits, hub))
 }
 
 pub async fn app() -> Option<TestApp> {
@@ -72,4 +81,13 @@ pub async fn space(state: &AppState, members: &[(&Person, &str)]) -> String {
             .expect("member");
     }
     id
+}
+
+pub async fn serve(state: AppState) -> SocketAddr {
+    let router = api::router::build_router(state, api::router::Options::default()).expect("router");
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let addr = listener.local_addr().expect("addr");
+    let service = router.into_make_service_with_connect_info::<SocketAddr>();
+    tokio::spawn(async move { axum::serve(listener, service).await.expect("serve") });
+    addr
 }

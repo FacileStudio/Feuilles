@@ -8,7 +8,7 @@ mod write;
 pub use files::{export_csv, export_xlsx, import_xlsx};
 pub use range::{Area, MAX_COLUMN, MAX_ROW, column_name, parse_range};
 pub use read::{Cell, SheetInfo, read_area, sheets};
-pub use write::{CellWrite, add_sheet, apply_writes};
+pub use write::{CellWrite, new_sheet, set_inputs};
 
 use ironcalc::base::UserModel;
 use tronc::Error;

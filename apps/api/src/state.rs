@@ -4,6 +4,7 @@ use porte::spaces::Guard;
 use sqlx::PgPool;
 
 use crate::auth::{Kits, Members};
+use crate::hub::Hub;
 
 /// What every handler shares.
 #[derive(Clone)]
@@ -16,12 +17,14 @@ pub struct AppState {
     pub kits: Kits,
     /// Space membership, over `space_members`.
     pub guard: Guard,
+    /// The collaboration rooms.
+    pub hub: Hub,
 }
 
 impl AppState {
     /// The state over `pool`, with membership answered from the app's own tables.
-    pub fn new(pool: PgPool, issuer: String, kits: Kits) -> AppState {
+    pub fn new(pool: PgPool, issuer: String, kits: Kits, hub: Hub) -> AppState {
         let guard = Guard::new(Arc::new(Members::new(pool.clone())));
-        AppState { pool, issuer, kits, guard }
+        AppState { pool, issuer, kits, guard, hub }
     }
 }

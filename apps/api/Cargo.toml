@@ -14,8 +14,8 @@ name = "api"
 path = "src/main.rs"
 
 [dependencies]
-tronc = { git = "file:///home/yann/Code/Facile/tronc-rs", tag = "v0.3.0", features = ["http", "health", "spa", "migrate", "journal", "apiref", "mcp"] }
-porte = { git = "file:///home/yann/Code/Facile/porte-rs", tag = "v0.5.0", features = ["oidc", "pg", "directory", "spaces", "mcp"] }
+tronc = { git = "https://github.com/FacileStudio/tronc-rs", tag = "v0.3.0", features = ["http", "health", "spa", "migrate", "journal", "apiref", "mcp"] }
+porte = { git = "https://github.com/FacileStudio/porte-rs", tag = "v0.5.1", features = ["oidc", "pg", "directory", "spaces", "mcp"] }
 ironcalc = "=0.9.1"
 async-trait = "0.1.92"
 schemars = { version = "1.2.3", features = ["uuid1"] }
@@ -33,7 +33,7 @@ utoipa = { version = "6.0.0", features = ["uuid", "time"] }
 uuid = { version = "1.29.2", features = ["v4", "serde"] }
 
 [dev-dependencies]
-tronc = { git = "file:///home/yann/Code/Facile/tronc-rs", tag = "v0.3.0", features = ["testdb", "mcptest"] }
+tronc = { git = "https://github.com/FacileStudio/tronc-rs", tag = "v0.3.0", features = ["testdb", "mcptest"] }
 futures-util = "0.3.34"
 http-body-util = "0.1.5"
 tokio-tungstenite = "0.29.0"

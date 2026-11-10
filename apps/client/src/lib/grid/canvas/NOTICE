@@ -1,0 +1,28 @@
+Vendored IronCalc canvas renderer
+=================================
+
+Upstream:  https://github.com/ironcalc/IronCalc
+Tag:       v0.9.1
+Commit:    eb9ca75bd99160c17902359d2d87225c4571c468 (2026-10-21)
+Licence:   MIT OR Apache-2.0, copyright the IronCalc authors.
+           Both licence texts sit beside this file (LICENSE-MIT, LICENSE-Apache-2.0).
+
+What was copied, keeping upstream paths below vendor/ (upstream root: webapp/IronCalc/src/):
+
+  components/WorksheetCanvas/*.ts   the framework-free canvas renderer
+  components/types.ts               direct imports of the renderer
+  components/workbookState.ts
+  components/util.ts
+  components/LinkDialog/util.ts
+  theme/theme.ts
+  theme/themeVariables.ts           imported by theme/theme.ts
+
+Not copied: components/Editor/util.tsx. It is a React module; the renderer only needs
+its getColor() palette, which the Feuilles adaptation replaces with muse colours.
+
+The first commit that adds this directory is a pure copy. Every later change to a file
+under vendor/ is its own commit, so `git diff <copy commit> -- vendor/` shows exactly how
+Feuilles differs from upstream and an upgrade can be replayed on a newer tag.
+
+The vendor/ directory name also keeps these files out of filet, whose `ignore: vendor`
+rule exists for third-party code kept close to upstream.

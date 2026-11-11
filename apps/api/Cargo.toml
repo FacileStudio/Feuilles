@@ -19,6 +19,8 @@ tronc = { git = "https://github.com/FacileStudio/tronc-rs", tag = "v0.3.0", feat
 porte = { git = "https://github.com/FacileStudio/porte-rs", tag = "v0.5.1", features = ["oidc", "pg", "directory", "spaces", "mcp"] }
 ironcalc = "=0.9.1"
 async-trait = "0.1.92"
+csv = "1.4.0"
+encoding_rs = "0.8.44"
 schemars = { version = "1.2.3", features = ["uuid1"] }
 axum = { version = "0.8.9", features = ["ws", "multipart", "macros"] }
 http = "1.5.0"

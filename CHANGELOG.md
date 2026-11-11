@@ -2,6 +2,27 @@
 
 All notable changes to Feuilles. The format follows Keep a Changelog; versions follow SemVer.
 
+## [Unreleased]
+
+### Added
+
+- Import a `.csv` as a new one-sheet workbook, from the workbook list or with `api import-xlsx`.
+  The importer handles a UTF-8 BOM or Windows-1252 bytes, `,`/`;`/tab delimiters (sniffed, or
+  Excel's `sep=` line), quoted line breaks and French decimal commas. Formulas and digit
+  identifiers such as `007` or `+33612345678` stay text. See "CSV files" in `docs/api.md`
+- The sidebar user card shows the Registre profile picture for everyone: the API keeps the
+  `picture` claim as the account avatar at sign-in and profile sync, and the client syncs the
+  profile on load
+
+### Changed
+
+- The CSV export prefixes a `'` to text cells starting with `= + - @ '`, tab or CR (CSV injection
+  guard). Numbers are unchanged
+
+### Fixed
+
+- "This sheet as CSV" downloads the selected sheet, not the one selected when the page opened
+
 ## [0.5.0] - 2026-11-11
 
 ### Added

@@ -74,16 +74,16 @@
 </PageHeader>
 
 <Dropzone
-	accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+	accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
 	maxSize={MAX_IMPORT}
 	maxFiles={1}
 	disabled={busy}
-	label="Import an .xlsx file"
+	label="Import an .xlsx or .csv file"
 	browseLabel="Browse"
 	dropAnnouncement="Drop to import the file"
 	hint="Up to 20 MB. The file becomes a new workbook."
 	onFiles={importFiles}
-	onReject={() => toast.danger('Only one .xlsx file of at most 20 MB')}
+	onReject={() => toast.danger('Only one .xlsx or .csv file of at most 20 MB')}
 />
 
 {#if list.loading}
@@ -93,7 +93,7 @@
 		<Button variant="secondary" onclick={() => list.load(spaces.currentId)}>Try again</Button>
 	</EmptyState>
 {:else if list.items.length === 0}
-	<EmptyState icon={icons.workbook} title="No workbook yet" description="Create one, or import an .xlsx file above.">
+	<EmptyState icon={icons.workbook} title="No workbook yet" description="Create one, or import an .xlsx or .csv file above.">
 		<Button icon={icons.plus} onclick={create} disabled={busy}>New workbook</Button>
 	</EmptyState>
 {:else}

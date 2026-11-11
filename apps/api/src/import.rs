@@ -1,4 +1,4 @@
-//! `api import-xlsx`: an operator command that turns `.xlsx` files into workbooks of a space,
+//! `api import-xlsx`: an operator command that turns `.xlsx` and `.csv` files into workbooks of a space,
 //! through the same engine path as `POST /workbooks/import`, with no session and no owner.
 
 use std::path::{Path, PathBuf};
@@ -8,11 +8,11 @@ use sqlx::PgPool;
 use tronc::Error;
 
 use crate::engine::{self, SheetInfo};
-use crate::modules::workbooks::{service, xlsx};
+use crate::modules::workbooks::{imports, service};
 
 /// Printed on a malformed command line.
 pub const USAGE: &str =
-    "usage: api import-xlsx --space <registre space id> [--title <title>] [--dry-run] <file.xlsx>...";
+    "usage: api import-xlsx --space <registre space id> [--title <title>] [--dry-run] <file.xlsx|file.csv>...";
 
 const MISSING: &str = "does not exist or was deleted: spaces arrive through the Registre directory sync";
 
@@ -113,19 +113,19 @@ async fn refuse_space(pool: &PgPool, space: &str) -> Option<String> {
 
 async fn one(pool: &PgPool, args: &Args, file: &Path) -> Result<String, Error> {
     let name = file.file_name().and_then(|name| name.to_str()).unwrap_or_default();
-    let stem = xlsx::stem(name).ok_or_else(|| Error::invalid("not an .xlsx file"))?;
-    let title = args.title.as_deref().map_or_else(|| xlsx::title(stem), xlsx::title);
+    let (stem, format) = imports::stem(name).ok_or_else(|| Error::invalid("not an .xlsx or .csv file"))?;
+    let title = args.title.as_deref().map_or_else(|| imports::title(stem), imports::title);
     let size = std::fs::metadata(file).map_err(|e| Error::invalid(format!("cannot read the file: {e}")))?.len();
-    if size > xlsx::MAX_IMPORT_BYTES as u64 {
+    if size > imports::MAX_IMPORT_BYTES as u64 {
         return Err(Error::too_large("the file is larger than 20 MiB"));
     }
     let bytes = std::fs::read(file).map_err(|e| Error::invalid(format!("cannot read the file: {e}")))?;
-    let model = xlsx::read(&bytes, &title)?;
+    let model = imports::read(&bytes, &title, format)?;
     let sheets = describe(&engine::sheets(&model));
     if args.dry_run {
         return Ok(format!("would create {title:?} in {}: {sheets}", args.space));
     }
-    let row = xlsx::store(pool, Some(&args.space), None, &title, &model).await?;
+    let row = imports::store(pool, Some(&args.space), None, &title, &model).await?;
     Ok(format!("created {} {title:?} in {}: {sheets}", row.id, args.space))
 }
 

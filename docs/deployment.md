@@ -40,7 +40,7 @@ The directory sync, the deletion poll and the hourly trash purge run in that one
 
 ## Importing spreadsheets
 
-`api import-xlsx` turns `.xlsx` files into workbooks of one space, from inside the running
+`api import-xlsx` turns `.xlsx` and `.csv` files into workbooks of one space, from inside the running
 container, with the app's own `DATABASE_URL`. It goes through the same IronCalc import as
 `POST /api/workbooks/import` (20 MiB per file, locale `en`, timezone `UTC`, the current engine
 version), with no HTTP and no session, so the workbooks have no owner (`owner_id` NULL).
@@ -51,12 +51,13 @@ docker exec feuilles-api /api import-xlsx --space <registre space id> --dry-run 
 docker exec feuilles-api /api import-xlsx --space <registre space id> --title "Q4 plan" /tmp/q4.xlsx
 ```
 
-Usage: `api import-xlsx --space <registre space id> [--title <title>] [--dry-run] <file.xlsx>...`
+Usage: `api import-xlsx --space <registre space id> [--title <title>] [--dry-run] <file.xlsx|file.csv>...`
 
 - The space must already be in the `spaces` table and not deleted: it arrives through the
   Registre directory sync. The command never creates one, and refuses an unknown or deleted id
   by name before reading any file.
-- The title is `--title` (one file only), otherwise the file name without `.xlsx`.
+- The title is `--title` (one file only), otherwise the file name without `.xlsx` or `.csv`. A CSV becomes one
+  sheet named after the title; `docs/api.md` "CSV files" says how its fields are read.
 - `--dry-run` reads and validates every file and prints the title, sheets and used ranges it
   would create. It writes nothing.
 - It prints one line per workbook, `created <id> "<title>" in <space>: <n> sheets (...)`.

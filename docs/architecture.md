@@ -32,7 +32,7 @@ One container, one replica. Rooms live in memory, so two replicas would split a 
 | `apps/api/src/mcp/` | The six MCP tools, with porte's `mcpauth::Verifier` as the token check |
 | `apps/api/src/reference/` | The `/docs` table |
 | `apps/api/src/upgrade.rs` | `engine-export` and `engine-verify` |
-| `apps/api/src/import.rs` | `import-xlsx`, through the route's `modules/workbooks/xlsx.rs` |
+| `apps/api/src/import.rs` | `import-xlsx`, through the route's `modules/workbooks/imports.rs` |
 
 ## Collaboration
 

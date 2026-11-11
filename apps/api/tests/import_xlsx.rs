@@ -86,9 +86,16 @@ async fn a_missing_or_deleted_space_is_refused_by_name() {
 async fn a_dry_run_reports_and_writes_nothing() {
     let Some(state) = common::state().await else { return };
     let space = common::space(&state, &[]).await;
-    let dry = Args { dry_run: true, ..args(&space, vec![xlsx("Forecast.xlsx")]) };
+    let book = xlsx("Forecast.xlsx");
+    let csv = book.with_file_name("People.csv");
+    std::fs::write(&csv, "name;age\nAda;36\n").expect("csv");
+    let dry = Args { dry_run: true, ..args(&space, vec![book, csv]) };
     let outcome = run(&state.pool, &dry).await;
     assert_eq!(outcome.code, 0, "{outcome:?}");
-    assert_eq!(outcome.out, [format!("would create \"Forecast\" in {space}: 2 sheets (Sheet1 A1:B2, Notes empty)")]);
+    let want = [
+        format!("would create \"Forecast\" in {space}: 2 sheets (Sheet1 A1:B2, Notes empty)"),
+        format!("would create \"People\" in {space}: 1 sheets (People A1:B2)"),
+    ];
+    assert_eq!(outcome.out, want);
     assert_eq!(count(&state.pool, &space).await, 0);
 }

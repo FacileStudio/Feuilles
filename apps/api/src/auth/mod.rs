@@ -2,6 +2,7 @@
 
 mod deletions;
 mod members;
+mod pictures;
 mod retire;
 mod routes;
 mod spaces;
@@ -62,7 +63,7 @@ impl Kits {
         let store = pg::Store::new(pool.clone()).with_token_sealer(TokenSealer::parse(token_key)?);
         let sessions = Manager::new(cfg, session::Deps { sessions: store.sessions(), now: None });
         let deps = oidc::Deps {
-            users: store.users(),
+            users: Arc::new(pictures::Pictures(store.users())),
             identities: store.identities(),
             codes: store.login_codes(),
             sessions: sessions.clone(),

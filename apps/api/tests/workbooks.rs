@@ -106,6 +106,23 @@ async fn xlsx_and_csv_go_out_and_xlsx_comes_back_in() {
 }
 
 #[tokio::test]
+async fn a_csv_upload_becomes_a_one_sheet_workbook_named_after_the_file() {
+    let Some(app) = app().await else { return };
+    let me = person(&app.state).await;
+    let file = "\u{feff}Nom;Montant\r\nAda;1,5\r\nBob;=A2\r\n";
+    let (status, imported) = import(&app.router, &me.token, "Clients.CSV", file.as_bytes(), None).await;
+    assert_eq!((status, imported["title"].as_str()), (StatusCode::CREATED, Some("Clients")));
+    assert_eq!(imported["sheets"], json!([{"index": 0, "name": "Clients", "used_range": "A1:B3"}]));
+    let cells = format!("/api/workbooks/{}/cells?range=B2:B3", imported["id"].as_str().expect("id"));
+    let (_, read) = call(&app.router, Method::GET, &cells, Some(&me.token), None).await;
+    assert_eq!(
+        (read["rows"][0][0]["formatted"].as_str(), read["rows"][1][0]["formatted"].as_str()),
+        (Some("1.5"), Some("=A2"))
+    );
+    assert_eq!(import(&app.router, &me.token, "empty.csv", b"", None).await.0, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
 async fn a_cookie_mutation_needs_the_csrf_header() {
     let Some(app) = app().await else { return };
     let me = person(&app.state).await;

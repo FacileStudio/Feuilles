@@ -30,6 +30,7 @@ export function createBackend(fetcher: Fetch) {
 	return {
 		session: () => call<{ user: SessionUser | null }>('/api/auth/session').then((r) => r.user),
 		logout: () => send<{ logged_out: boolean }>('POST', '/api/auth/logout'),
+		syncProfile: () => send<{ synced: boolean }>('POST', '/api/auth/sync-profile').then((r) => r.synced),
 		version: () => call<ServerVersion>('/version'),
 		spaces: () => call<{ spaces: Space[] }>('/api/spaces').then((r) => r.spaces),
 		list: (spaceId: string | null, trashed = false) =>

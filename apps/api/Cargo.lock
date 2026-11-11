@@ -73,6 +73,8 @@ version = "0.0.0"
 dependencies = [
  "async-trait",
  "axum",
+ "csv",
+ "encoding_rs",
  "futures-util",
  "http",
  "http-body-util",

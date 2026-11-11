@@ -87,7 +87,8 @@ dev machine. Install it elsewhere with `cd apps/client && bunx playwright-core i
 | `tests/directory.rs`, `tests/lifecycle.rs` | Snapshot apply and evictions, erase, the 30-day purge, the porte schema |
 | `tests/directory_safety.rs` | A dropped space is soft-deleted and its workbooks trashed, an empty snapshot is refused, a space comes back, members lose access at once |
 | `tests/live_sync.rs` | Two real sockets, API writes live, presence, snapshots, shutdown |
-| `tests/live_limits.rs` | Reject and reload, viewer, rate limit, 1009, 1003, 1002, silence, 1013, keepalive |
+| `tests/live_limits.rs` | Reject and reload, viewer, rate limit, 1009, 1003, 1002, silence, 1013, keepalive, the sheet cap, the socket cap |
+| `tests/live_revocation.rs` | Logout and expiry close sockets with 1008, a deleted person's push, eviction from every room |
 | `tests/live_access.rs` | Idempotent resend, 1008 refusals, eviction, 1011, the Origin check |
 | `tests/durability.rs` | Kills a real `api` process during a burst; every acknowledged batch survives |
 | `tests/mcp.rs` | tronc's MCP conformance kit, scopes, live writes, paging |
@@ -101,5 +102,6 @@ serve it on a random port and drive `tokio-tungstenite` clients.
 
 ## The F0 spike
 
-`spikes/collab` is the throwaway crate that proved the collaboration design on IronCalc 0.9.1.
-It is not built by the gate; see its README.
+`spikes/collab`, the throwaway crate that proved the collaboration design on IronCalc 0.9.1, was
+removed in v0.6.2. Its findings are in `docs/architecture.md`; the code is in git history
+(`git show v0.6.1:spikes/collab/README.md`).

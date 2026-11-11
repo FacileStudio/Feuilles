@@ -67,7 +67,6 @@ apps/
   client/    SvelteKit client, served by the API from CLIENT_DIR
 docs/        Architecture, configuration, development, deployment, API
 scripts/     The gate, the dev database, the version stamp, the deploy check
-spikes/      F0 collaboration spike, not shipped
 ```
 
 ## Documentation

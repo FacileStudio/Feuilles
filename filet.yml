@@ -19,8 +19,8 @@ ignore:
   - testdata
   - coverage
 
-# Rust for the API and the F0 spike, TypeScript and Svelte for the client, the
-# shell scripts every suite app inherits, and the spike's Node-side scripts.
+# Rust for the API, TypeScript and Svelte for the client, the shell scripts every
+# suite app inherits, and Node-side scripts.
 extensions: [.rs, .ts, .svelte, .sh, .mjs]
 
 limits:

@@ -1,11 +1,11 @@
-FROM oven/bun:1 AS client-build
+FROM oven/bun:1.4.2 AS client-build
 WORKDIR /client
 COPY apps/client/package.json apps/client/bun.lock* ./
 RUN bun install --frozen-lockfile
 COPY apps/client/ .
 RUN bun run build
 
-FROM rust:1-bookworm AS api-build
+FROM rust:1.98.1-bookworm AS api-build
 WORKDIR /repo/apps/api
 COPY apps/api/Cargo.toml apps/api/Cargo.lock apps/api/rust-toolchain.toml ./
 RUN mkdir src && echo 'fn main() {}' > src/main.rs && touch src/lib.rs && cargo build --release --locked && rm -rf src

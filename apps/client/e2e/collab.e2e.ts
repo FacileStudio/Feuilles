@@ -84,3 +84,20 @@ test('two members edit one workbook live, a reload keeps it, an outsider sees no
 	const outsider = await pageAs('outsider', `/w/${id}`);
 	await outsider.getByText('No access').waitFor({ timeout: 10_000 });
 }, 120_000);
+
+test('the API serves the icons and manifest of the built client', async () => {
+	const want = {
+		'/favicon.ico': 'image/vnd.microsoft.icon',
+		'/favicon.svg': 'image/svg+xml',
+		'/apple-touch-icon.png': 'image/png',
+		'/icon-192.png': 'image/png',
+		'/icon-512.png': 'image/png',
+		'/site.webmanifest': 'application/manifest+json'
+	};
+	for (const [path, type] of Object.entries(want)) {
+		const answer = await fetch(`${stack.base}${path}`);
+		expect([path, answer.status, answer.headers.get('content-type')]).toEqual([path, 200, type]);
+	}
+	const page = await pageAs('alice', '/');
+	expect(await page.locator('link[rel="icon"]').getAttribute('href')).toBe('/favicon.svg');
+});

@@ -23,5 +23,6 @@ export const icons = {
 	number: 'solar:hashtag-linear',
 	freeze: 'solar:snowflake-linear',
 	workbook: 'solar:table-linear',
-	paste: 'solar:clipboard-linear'
+	paste: 'solar:clipboard-linear',
+	logo: 'solar:table-minimalistic-bold-duotone'
 } as const;

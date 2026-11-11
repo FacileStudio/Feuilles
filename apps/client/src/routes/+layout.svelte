@@ -1,8 +1,9 @@
 <script lang="ts">
 	import '../app.css';
 	import type { Snippet } from 'svelte';
-	import { AuthScreen, Spinner, Toaster, provideLocale } from '@facile/muse';
+	import { AuthScreen, Icon, Spinner, Toaster, provideLocale } from '@facile/muse';
 	import AppShell from '$lib/shell/AppShell.svelte';
+	import { icons } from '$lib/icons';
 	import { account, loadAccount } from '$lib/state/account.svelte';
 	import { restoreTheme } from '$lib/state/theme.svelte';
 	import { signInUrl } from '$lib/backend';
@@ -27,6 +28,9 @@
 	</AppShell>
 {:else}
 	<AuthScreen appName="Feuilles" href={signInUrl}>
+		{#snippet logo()}
+			<Icon icon={icons.logo} size={32} class="text-fc-fg" />
+		{/snippet}
 		{#snippet tagline()}
 			<p>Spreadsheets your space edits together.</p>
 		{/snippet}

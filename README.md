@@ -14,7 +14,7 @@ locally and not deployed yet.
 - Workbooks per person or per Registre space, with a 30-day trash
 - Live co-editing over one WebSocket per workbook, ordered and stored by the server
 - The same IronCalc engine computes in the browser (WASM) and on the server
-- Import and export `.xlsx`, export a sheet as CSV
+- Import and export `.xlsx`, import a `.csv` as a new workbook, export a sheet as CSV
 - Read and write cell ranges over HTTP, live for everyone with the workbook open
 - Six MCP tools for agents, with Registre tokens, free on every plan
 - Registre sign-in only, with spaces and account deletions synced from Registre

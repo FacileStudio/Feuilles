@@ -6,10 +6,10 @@ use porte::Identity;
 use tronc::Error;
 use tronc::json::Json;
 
+use super::imports::{self, Format, MAX_IMPORT_BYTES};
 use super::model;
 use super::service::{Access, parse_id, require, space_scope};
 use super::types::SheetQuery;
-use super::xlsx::{self, MAX_IMPORT_BYTES};
 use crate::engine;
 use crate::state::AppState;
 
@@ -19,6 +19,7 @@ struct Upload {
     name: String,
     bytes: Vec<u8>,
     space_id: Option<String>,
+    format: Format,
 }
 
 fn multipart_error(error: axum::extract::multipart::MultipartError) -> Error {
@@ -37,7 +38,7 @@ async fn field_bytes(field: Field<'_>) -> Result<Vec<u8>, Error> {
 }
 
 async fn read_upload(multipart: &mut Multipart) -> Result<Upload, Error> {
-    let mut upload = Upload { name: String::new(), bytes: Vec::new(), space_id: None };
+    let mut upload = Upload { name: String::new(), bytes: Vec::new(), space_id: None, format: Format::Xlsx };
     while let Some(field) = multipart.next_field().await.map_err(multipart_error)? {
         match field.name() {
             Some("file") => {
@@ -48,13 +49,13 @@ async fn read_upload(multipart: &mut Multipart) -> Result<Upload, Error> {
             other => return Err(Error::invalid(format!("unknown field {:?}", other.unwrap_or_default()))),
         }
     }
-    match (xlsx::stem(&upload.name), upload.bytes.is_empty()) {
-        (Some(stem), false) => Ok(Upload { name: stem.to_owned(), ..upload }),
-        _ => Err(Error::invalid("send one .xlsx file in the field \"file\"")),
+    match (imports::stem(&upload.name), upload.bytes.is_empty()) {
+        (Some((stem, format)), false) => Ok(Upload { name: stem.to_owned(), format, ..upload }),
+        _ => Err(Error::invalid("send one .xlsx or .csv file in the field \"file\"")),
     }
 }
 
-/// `POST /workbooks/import`: multipart `file` (`.xlsx`, at most 20 MiB) and `space_id`.
+/// `POST /workbooks/import`: multipart `file` (`.xlsx` or `.csv`, at most 20 MiB) and `space_id`.
 pub async fn import(
     State(state): State<AppState>,
     identity: Identity,
@@ -62,12 +63,12 @@ pub async fn import(
 ) -> Result<Response, Error> {
     let upload = read_upload(&mut multipart).await?;
     let space = space_scope(&state, &identity, upload.space_id.as_deref()).await?;
-    let title = xlsx::title(&upload.name);
-    let (bytes, name) = (upload.bytes, title.clone());
-    let model = tokio::task::spawn_blocking(move || xlsx::read(&bytes, &name))
+    let title = imports::title(&upload.name);
+    let (bytes, name, format) = (upload.bytes, title.clone(), upload.format);
+    let model = tokio::task::spawn_blocking(move || imports::read(&bytes, &name, format))
         .await
-        .map_err(|e| Error::internal("import xlsx", e))??;
-    let row = xlsx::store(&state.pool, space.as_deref(), Some(identity.user_id), &title, &model).await?;
+        .map_err(|e| Error::internal("import a file", e))??;
+    let row = imports::store(&state.pool, space.as_deref(), Some(identity.user_id), &title, &model).await?;
     Ok((StatusCode::CREATED, Json(row.into_workbook(engine::sheets(&model)))).into_response())
 }
 

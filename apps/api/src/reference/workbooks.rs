@@ -51,8 +51,8 @@ pub const ROUTES: &[Route] = &[
         ..wb(
             Post,
             "/api/workbooks/import",
-            "Import an .xlsx",
-            "Multipart: `file` (.xlsx, at most 20 MiB) and `space_id`.",
+            "Import an .xlsx or .csv",
+            "Multipart: `file` (.xlsx or .csv, at most 20 MiB) and `space_id`.",
         )
     },
     Route { answer: (200, Workbook), ..wb(Get, "/api/workbooks/{id}", "Get a workbook", VIEWER) },

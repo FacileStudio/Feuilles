@@ -70,14 +70,14 @@ as a viewer.
 | `GET /api/spaces` | | `{"spaces":[{"id","name","role"}]}` by name | signed in |
 | `GET /api/workbooks` | `?space_id=&trashed=false` | `{"workbooks":[Workbook]}`, newest change first | member of `space_id` |
 | `POST /api/workbooks` | `{"title","space_id"?,"locale"?,"timezone"?,"language"?}` | 201 `Workbook` | member of `space_id` |
-| `POST /api/workbooks/import` | multipart `file` (.xlsx, at most 20 MiB), `space_id`? | 201 `Workbook`, titled after the file name | member of `space_id` |
+| `POST /api/workbooks/import` | multipart `file` (.xlsx or .csv, at most 20 MiB), `space_id`? | 201 `Workbook`, titled after the file name; a CSV is one sheet of that name | member of `space_id` |
 | `GET /api/workbooks/{id}` | | `Workbook` | Viewer |
 | `PATCH /api/workbooks/{id}` | `{"title"}` | `Workbook` | Editor |
 | `DELETE /api/workbooks/{id}` | | 204, sets `trashed_at` | Manager |
 | `POST /api/workbooks/{id}/restore` | | `Workbook` | Manager |
 | `DELETE /api/workbooks/{id}/permanent` | | 204; 412 unless in the trash | Manager |
 | `GET /api/workbooks/{id}/export.xlsx` | | the file, `Content-Disposition: attachment` | Viewer |
-| `GET /api/workbooks/{id}/export.csv` | `?sheet=0` | RFC 4180 CSV of displayed values, CRLF | Viewer |
+| `GET /api/workbooks/{id}/export.csv` | `?sheet=0` | RFC 4180 CSV of displayed values, CRLF; text starting with `= + - @ ' tab CR` gets a leading `'` | Viewer |
 | `GET /api/workbooks/{id}/cells` | `?sheet=0&range=A1:D20` | `{"sheet","range","rows":[[Cell]]}`, at most 10 000 cells | Viewer |
 | `PUT /api/workbooks/{id}/cells` | `{"writes":[{"sheet","row","column","input"}]}`, 1 to 5000 | `{"seq"}` | Editor |
 | `GET /api/workbooks/{id}/ws` | | WebSocket, below | Viewer |
@@ -90,6 +90,29 @@ task.
 
 `PUT /cells` and the MCP writes go through the workbook's room as client 0: open sockets receive
 them as `UPDATE` frames.
+
+### CSV files
+
+An imported CSV becomes one sheet named after the title (`\ / * ? : [ ] '` become spaces, 31
+characters at most). The importer reads it this way:
+
+- Encoding: UTF-8, with or without a BOM. Bytes that are not UTF-8 read as Windows-1252, which
+  is what Excel's plain "CSV" save writes.
+- Delimiter: an Excel `sep=;` first line wins. Otherwise the importer counts `,`, `;` and tab
+  outside quotes in the first record and takes the most frequent; a tie goes to `,`. Quoted
+  fields may hold delimiters, `""` and line breaks.
+- Types: each field is typed like input in a cell (numbers, `12%`, `$5`, dates, `TRUE`, links),
+  except that these stay text: a field starting with `=`, digits with a leading zero (`007`,
+  `06 12 34 56 78`), `+` and more than six digits (`+33612345678`), and more than 15 digits.
+  A `+` or `-` field that the engine would read as a formula (`-A1`, `+SUM(1)`) also stays text.
+  No formula is ever imported.
+- In a `;` file, a decimal comma (`1,5`, `-0,25`) reads as a number.
+- Limits: 20 MiB, 1 048 576 rows, 16 384 columns and 5 000 000 filled cells; past them, 413.
+
+The export writes displayed values, never formulas. A text cell that starts with `=`, `+`, `-`,
+`@`, `'`, tab or CR gets a leading `'`, so a spreadsheet opening the file shows it as text
+instead of running it (OWASP "CSV injection"). Numbers are never prefixed, so `-5` stays `-5`.
+Importing an export gives back the same CSV.
 
 Other routes: `GET /version` answers `{"version":"v0.4.0","engine":"0.9.1"}`; `GET /health` and
 `GET /ready` (also under `/api`) answer `{"status":"ok"}` and `{"status":"ready"}`.

@@ -4,6 +4,8 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-11
+
 ### Added
 
 - Import a `.csv` as a new one-sheet workbook, from the workbook list or with `api import-xlsx`.

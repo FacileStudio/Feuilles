@@ -120,13 +120,15 @@
 .feuilles-grid .ic-worksheet-cell-outline {
 	position: absolute;
 	display: flex;
-	border: 2px solid var(--palette-sheet-outline-color);
+	outline: 2px solid var(--palette-sheet-outline-color);
+	outline-offset: -2px;
 	border-radius: 3px;
 }
 
 .feuilles-grid .ic-worksheet-extend-to-outline {
 	position: absolute;
-	border: 1px dashed var(--palette-sheet-outline-color);
+	outline: 1px dashed var(--palette-sheet-outline-color);
+	outline-offset: -1px;
 	border-radius: 3px;
 }
 

@@ -35,13 +35,13 @@
 			<PreferencesSection showLanguage={false} theme={theme.mode} onThemeChange={setTheme} />
 		{:else}
 			<SettingsSection title="Versions" description="The engine in this page must match the server's to open a workbook.">
-				<dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-fc-sm">
+				<dl class="grid grid-cols-1 gap-x-6 gap-y-1 text-fc-sm sm:grid-cols-[auto_1fr] sm:gap-y-2">
 					<dt class="text-fc-fg-muted">Spreadsheet engine in this page</dt>
-					<dd class="font-fc-mono text-fc-fg">IronCalc {ENGINE_VERSION}</dd>
+					<dd class="mb-2 font-fc-mono whitespace-nowrap text-fc-fg sm:mb-0">IronCalc {ENGINE_VERSION}</dd>
 					<dt class="text-fc-fg-muted">Spreadsheet engine on the server</dt>
-					<dd class="font-fc-mono text-fc-fg">{server?.engine ? `IronCalc ${server.engine}` : 'Unknown'}</dd>
+					<dd class="mb-2 font-fc-mono whitespace-nowrap text-fc-fg sm:mb-0">{server?.engine ? `IronCalc ${server.engine}` : 'Unknown'}</dd>
 					<dt class="text-fc-fg-muted">Feuilles server</dt>
-					<dd class="font-fc-mono text-fc-fg">{server?.version ?? 'Unknown'}</dd>
+					<dd class="mb-2 font-fc-mono whitespace-nowrap text-fc-fg sm:mb-0">{server?.version ?? 'Unknown'}</dd>
 				</dl>
 			</SettingsSection>
 		{/if}

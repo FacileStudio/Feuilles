@@ -95,8 +95,8 @@
 <svelte:head><title>{workbook?.title ?? 'Workbook'} · Feuilles</title></svelte:head>
 
 <div class="flex h-full min-h-0 flex-col">
-	<header class="flex min-h-14 shrink-0 items-center gap-3 px-3 py-2">
-		<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/">Workbooks</Button>
+	<header class="flex min-h-14 shrink-0 items-center gap-2 px-3 py-2 sm:gap-3">
+		<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/"><span class="max-sm:sr-only">Workbooks</span></Button>
 		<button
 			type="button"
 			class="min-w-0 truncate rounded-fc-sm px-2 py-1 text-left text-fc-lg font-semibold text-fc-fg hover:bg-fc-surface"
@@ -115,20 +115,23 @@
 				</div>
 			{/if}
 			{#if status}<StatusDot tone={status.tone} label={status.label} pulse={status.tone === 'warning'} />{/if}
-			<Menu label="Download" items={downloads} align="end">
-				{#snippet trigger()}<Icon icon={icons.download} size={18} />{/snippet}
-			</Menu>
+			{#if workbook}
+				<Menu label="Download" items={downloads} align="end">
+					{#snippet trigger()}<Icon icon={icons.download} size={18} />{/snippet}
+				</Menu>
+			{/if}
 		</div>
 	</header>
 
 	{#if phase.kind === 'loading'}
 		<div class="flex flex-1 items-center justify-center"><Spinner /></div>
 	{:else if phase.kind === 'failed'}
-		<EmptyState icon={icons.warning} title="This workbook could not be opened" description={phase.message}>
+		<EmptyState class="mx-3" icon={icons.warning} title="This workbook could not be opened" description={phase.message}>
 			<Button href="/" variant="secondary">Back to workbooks</Button>
 		</EmptyState>
 	{:else if phase.kind === 'no_access'}
 		<EmptyState
+			class="mx-3"
 			icon={icons.warning}
 			title="No access"
 			description="This workbook does not exist, or it belongs to a space you are not a member of."
@@ -137,6 +140,7 @@
 		</EmptyState>
 	{:else if phase.kind === 'mismatch'}
 		<EmptyState
+			class="mx-3"
 			icon={icons.refresh}
 			title="Feuilles was updated"
 			description={`This page runs spreadsheet engine ${ENGINE_VERSION} and the workbook needs ${phase.server}. Reload the page to get the new version.`}

@@ -39,7 +39,7 @@ pub async fn run(config: Config, args: Vec<String>) -> ExitCode {
     if let Err(error) = tronc::migrate::run(&pool, &MIGRATOR).await {
         return fail("migrate", &error);
     }
-    if let Some(code) = crate::upgrade::command(&args, &pool).await {
+    if let Some(code) = operator(&args, &pool).await {
         return code;
     }
     let hub = Hub::start(pool.clone(), tokio::runtime::Handle::current(), Hub::default_shards());
@@ -57,6 +57,13 @@ pub async fn run(config: Config, args: Vec<String>) -> ExitCode {
     let code = listen(app, config.core.port, shutdown, hub.clone()).await;
     let _ = tokio::task::spawn_blocking(move || hub.shutdown()).await;
     code
+}
+
+async fn operator(args: &[String], pool: &PgPool) -> Option<ExitCode> {
+    match crate::upgrade::command(args, pool).await {
+        Some(code) => Some(code),
+        None => crate::import::command(args, pool).await,
+    }
 }
 
 async fn app(config: &Config, state: AppState) -> Result<axum::Router, String> {

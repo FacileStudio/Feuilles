@@ -88,8 +88,8 @@ pub async fn list(pool: &PgPool, space: Option<&str>, owner: i64, trashed: bool)
 pub struct NewRow<'a> {
     /// The space, or `None`.
     pub space_id: Option<&'a str>,
-    /// The creator.
-    pub owner_id: i64,
+    /// The creator, or `None` for a space workbook made by an operator command.
+    pub owner_id: Option<i64>,
     /// The trimmed title.
     pub title: &'a str,
     /// Locale, timezone and language.

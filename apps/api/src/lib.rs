@@ -6,6 +6,7 @@ pub mod auth;
 pub mod engine;
 pub mod env;
 pub mod hub;
+pub mod import;
 pub mod mcp;
 pub mod modules;
 pub mod purge;

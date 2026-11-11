@@ -7,14 +7,11 @@ use tronc::Error;
 use tronc::json::Json;
 
 use super::model;
-use super::service::{self, Access, parse_id, require, space_scope};
-use super::store::{self, NewRow};
+use super::service::{Access, parse_id, require, space_scope};
 use super::types::SheetQuery;
+use super::xlsx::{self, MAX_IMPORT_BYTES};
 use crate::engine;
 use crate::state::AppState;
-
-/// The largest `.xlsx` an import takes.
-pub const MAX_IMPORT_BYTES: usize = 20 << 20;
 
 const XLSX: &str = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -51,8 +48,7 @@ async fn read_upload(multipart: &mut Multipart) -> Result<Upload, Error> {
             other => return Err(Error::invalid(format!("unknown field {:?}", other.unwrap_or_default()))),
         }
     }
-    let stem = upload.name.strip_suffix(".xlsx").or_else(|| upload.name.strip_suffix(".XLSX"));
-    match (stem, upload.bytes.is_empty()) {
+    match (xlsx::stem(&upload.name), upload.bytes.is_empty()) {
         (Some(stem), false) => Ok(Upload { name: stem.to_owned(), ..upload }),
         _ => Err(Error::invalid("send one .xlsx file in the field \"file\"")),
     }
@@ -66,19 +62,12 @@ pub async fn import(
 ) -> Result<Response, Error> {
     let upload = read_upload(&mut multipart).await?;
     let space = space_scope(&state, &identity, upload.space_id.as_deref()).await?;
-    let title = service::title(&upload.name).unwrap_or_else(|_| "Imported workbook".to_owned());
+    let title = xlsx::title(&upload.name);
     let (bytes, name) = (upload.bytes, title.clone());
-    let model = tokio::task::spawn_blocking(move || engine::import_xlsx(&bytes, &name, "en", "UTC", "en"))
+    let model = tokio::task::spawn_blocking(move || xlsx::read(&bytes, &name))
         .await
         .map_err(|e| Error::internal("import xlsx", e))??;
-    let new = NewRow {
-        space_id: space.as_deref(),
-        owner_id: identity.user_id,
-        title: &title,
-        settings: ("en", "UTC", "en"),
-        snapshot: &model.to_bytes(),
-    };
-    let row = store::insert(&state.pool, new).await?;
+    let row = xlsx::store(&state.pool, space.as_deref(), Some(identity.user_id), &title, &model).await?;
     Ok((StatusCode::CREATED, Json(row.into_workbook(engine::sheets(&model)))).into_response())
 }
 

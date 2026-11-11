@@ -10,6 +10,7 @@ mod router;
 pub mod service;
 pub mod store;
 pub mod types;
+pub mod xlsx;
 
-pub use files::MAX_IMPORT_BYTES;
 pub use router::routes;
+pub use xlsx::MAX_IMPORT_BYTES;

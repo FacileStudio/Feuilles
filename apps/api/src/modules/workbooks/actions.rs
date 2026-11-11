@@ -31,7 +31,7 @@ pub async fn create(state: &AppState, identity: &Identity, body: &CreateWorkbook
     let model = engine::new_model(&title, locale, timezone, language)?;
     let new = NewRow {
         space_id: space.as_deref(),
-        owner_id: identity.user_id,
+        owner_id: Some(identity.user_id),
         title: &title,
         settings: (locale, timezone, language),
         snapshot: &model.to_bytes(),

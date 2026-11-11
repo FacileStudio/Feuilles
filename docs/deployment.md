@@ -38,6 +38,35 @@ reconnect and resend.
 
 The directory sync, the deletion poll and the hourly trash purge run in that one process.
 
+## Importing spreadsheets
+
+`api import-xlsx` turns `.xlsx` files into workbooks of one space, from inside the running
+container, with the app's own `DATABASE_URL`. It goes through the same IronCalc import as
+`POST /api/workbooks/import` (20 MiB per file, locale `en`, timezone `UTC`, the current engine
+version), with no HTTP and no session, so the workbooks have no owner (`owner_id` NULL).
+
+```sh
+docker cp "Q4 plan.xlsx" feuilles-api:/tmp/q4.xlsx
+docker exec feuilles-api /api import-xlsx --space <registre space id> --dry-run /tmp/q4.xlsx
+docker exec feuilles-api /api import-xlsx --space <registre space id> --title "Q4 plan" /tmp/q4.xlsx
+```
+
+Usage: `api import-xlsx --space <registre space id> [--title <title>] [--dry-run] <file.xlsx>...`
+
+- The space must already be in the `spaces` table and not deleted: it arrives through the
+  Registre directory sync. The command never creates one, and refuses an unknown or deleted id
+  by name before reading any file.
+- The title is `--title` (one file only), otherwise the file name without `.xlsx`.
+- `--dry-run` reads and validates every file and prints the title, sheets and used ranges it
+  would create. It writes nothing.
+- It prints one line per workbook, `created <id> "<title>" in <space>: <n> sheets (...)`.
+- Exit codes: 0 every file imported, 1 the space was refused or a file failed (that file writes
+  nothing, the others still import), 2 a malformed command line.
+
+`docker cp` keeps the file mode and makes root the owner, while the API runs as `nonroot`: copy
+a file that is world-readable (`chmod 644` it first). The image has no shell and no `rm`, so the
+copies stay in `/tmp` until the next deploy recreates the container.
+
 ## Upgrading IronCalc
 
 Snapshots and batches are `bitcode` of IronCalc's private types. A new `ironcalc` may not read

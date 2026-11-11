@@ -77,11 +77,15 @@
 		});
 	}
 
+	const selectedSheet = $derived.by(() => {
+		void session?.revision;
+		return session?.view?.getSelectedSheet() ?? 0;
+	});
 	const downloads = $derived(
 		workbook
 			? [
 					{ label: 'Excel workbook (.xlsx)', icon: icons.download, href: exportUrl(workbook.id, 'xlsx') },
-					{ label: 'This sheet as CSV', icon: icons.download, href: exportUrl(workbook.id, 'csv', session?.view?.getSelectedSheet() ?? 0) }
+					{ label: 'This sheet as CSV', icon: icons.download, href: exportUrl(workbook.id, 'csv', selectedSheet) }
 				]
 			: []
 	);

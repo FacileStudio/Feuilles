@@ -6,6 +6,9 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ### Security
 
+- porte-rs v0.5.2. It drops `openidconnect` and `rsa` 0.9.10 (RUSTSEC-2023-0071, the Marvin
+  timing attack) from the build. Back-channel logout now answers 503 when Registre's keys cannot
+  be fetched, instead of 401
 - An open workbook socket now ends with its session. The API checks the session at every ping and
   right after any logout or back-channel logout, and closes with 1008 `unauthenticated` when it
   is gone or expired. A person Registre deletes loses every socket in every room at once

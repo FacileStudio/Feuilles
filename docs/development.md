@@ -8,7 +8,7 @@ How to run the API locally, run the tests and pass the gate.
 - Docker, for Postgres 16 on `127.0.0.1:5653`
 - `filet` 0.18 or later, `lefthook` and `bun` through `mise install`
 - Network access to `github.com/FacileStudio`: `Cargo.toml` fetches tronc-rs (tag `v0.3.0`)
-  and porte-rs (tag `v0.5.1`) by git URL
+  and porte-rs (tag `v0.5.2`) by git URL
 
 ## Setup
 

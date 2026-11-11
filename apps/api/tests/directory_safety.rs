@@ -53,7 +53,7 @@ async fn set_trashed(pool: &sqlx::PgPool, workbook: uuid::Uuid, at: OffsetDateTi
 
 async fn evicted(pool: &sqlx::PgPool, next: porte::directory::Snapshot) -> Vec<(uuid::Uuid, Option<String>)> {
     let evictions = apply_snapshot(pool, &next).await.expect("apply");
-    let mut pairs: Vec<_> = evictions.into_iter().map(|e| (e.workbook, e.subject)).collect();
+    let mut pairs: Vec<_> = evictions.into_iter().map(|e| (e.workbook.unwrap_or_default(), e.subject)).collect();
     pairs.sort();
     pairs
 }

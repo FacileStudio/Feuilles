@@ -68,6 +68,16 @@ fn cell(model: &Model, sheet: u32, row: i32, column: i32) -> Result<Cell, Error>
     })
 }
 
+/// How many sheets the model holds.
+pub fn sheet_count(model: &Model) -> usize {
+    model.get_model().workbook.worksheets.len()
+}
+
+/// How many filled cells the model holds. It walks every cell.
+pub fn cell_count(model: &Model) -> usize {
+    model.get_model().workbook.worksheets.iter().map(|sheet| sheet.sheet_data.cells().count()).sum()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

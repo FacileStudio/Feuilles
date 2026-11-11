@@ -7,8 +7,8 @@ use uuid::Uuid;
 
 use super::protocol::{self, Cursor};
 use super::shard::Ctx;
-use super::{Joined, Member, Origin, Outbox, Role};
-use crate::engine::Model;
+use super::{Joined, Limits, Member, Origin, Outbox, Role, Seat};
+use crate::engine::{self, Model};
 use crate::modules::workbooks::history;
 
 /// The close code for someone who lost access.
@@ -34,6 +34,7 @@ pub struct Room {
     pub(super) empty_since: Option<Instant>,
     pub(super) broken: bool,
     pub(super) acks: HashMap<Origin, u32>,
+    pub(super) undo_cells: usize,
     next_client: u32,
     presence_dirty: bool,
     presence_sent: Option<Instant>,
@@ -61,14 +62,21 @@ impl Room {
             empty_since: Some(Instant::now()),
             broken: false,
             acks: loaded.acks,
+            undo_cells: 0,
             next_client: 0,
             presence_dirty: false,
             presence_sent: None,
         })
     }
 
-    /// Adds a socket and queues its INIT frame.
-    pub fn join(&mut self, member: Member, role: Role, origin: Origin, outbox: Outbox) -> Joined {
+    /// Adds a socket and queues its INIT frame: 413 when the room or this person already holds as
+    /// many sockets as the limits allow.
+    pub fn join(&mut self, limits: &Limits, seat: Seat) -> Result<Joined, Error> {
+        let Seat { member, role, origin, outbox } = seat;
+        let mine = self.conns.values().filter(|conn| conn.member.user_id == member.user_id).count();
+        if mine >= limits.max_user_sockets || self.conns.len() >= limits.max_room_sockets {
+            return Err(Error::too_large("too many connections to this workbook"));
+        }
         self.next_client = self.next_client.checked_add(1).unwrap_or(1);
         let client_id = self.next_client;
         let acked = self.acks.get(&origin).copied().unwrap_or(0);
@@ -76,7 +84,7 @@ impl Room {
         self.conns.insert(client_id, Conn { member, origin, role, outbox, cursor: None });
         self.empty_since = None;
         self.presence_dirty = true;
-        Joined { client_id }
+        Ok(Joined { client_id })
     }
 
     /// Records a socket's selection.
@@ -137,6 +145,14 @@ impl Room {
         match ctx.block_on(history::snapshot(&ctx.pool, self.id, &self.model.to_bytes(), self.seq)) {
             Ok(()) => self.snapshot_seq = self.seq,
             Err(error) => tracing::warn!(workbook = %self.id, error = %error.message, "rooms: snapshot failed"),
+        }
+    }
+
+    /// Rebuilds the model from its own bytes, which carry no undo history.
+    pub fn forget_undo(&mut self) {
+        match engine::load(&self.model.to_bytes(), self.language) {
+            Ok(model) => (self.model, self.undo_cells) = (model, 0),
+            Err(error) => tracing::warn!(workbook = %self.id, error = %error.message, "rooms: undo reset failed"),
         }
     }
 }

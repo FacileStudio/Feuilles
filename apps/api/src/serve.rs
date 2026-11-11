@@ -10,7 +10,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::auth::Kits;
 use crate::env::Config;
-use crate::hub::Hub;
+use crate::hub::{Hub, Limits};
 use crate::mcp::{Mcp, porte_verifier};
 use crate::modules::live;
 use crate::router::{self, Options};
@@ -42,7 +42,8 @@ pub async fn run(config: Config, args: Vec<String>) -> ExitCode {
     if let Some(code) = operator(&args, &pool).await {
         return code;
     }
-    let hub = Hub::start(pool.clone(), tokio::runtime::Handle::current(), Hub::default_shards());
+    let hub =
+        Hub::with_limits(pool.clone(), tokio::runtime::Handle::current(), Hub::default_shards(), Limits::default());
     let kits = match Kits::new(&config.porte, &pool, &config.token_key, live::evictor(hub.clone())).await {
         Ok(kits) => kits,
         Err(error) => return fail("build the auth kits", &error),

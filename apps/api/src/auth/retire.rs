@@ -43,5 +43,5 @@ pub(super) async fn retire_spaces(tx: &mut PgConnection, kept: &[String]) -> Res
     .bind(&gone)
     .fetch_all(&mut *tx)
     .await?;
-    Ok(ids.into_iter().map(|workbook| Eviction { workbook, subject: None }).collect())
+    Ok(ids.into_iter().map(|workbook| Eviction { workbook: Some(workbook), subject: None }).collect())
 }

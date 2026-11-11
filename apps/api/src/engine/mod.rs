@@ -4,6 +4,7 @@ mod csv_cells;
 mod csv_export;
 mod csv_import;
 mod files;
+mod inflate;
 mod range;
 mod read;
 mod write;
@@ -12,7 +13,7 @@ pub use csv_export::export_csv;
 pub use csv_import::import_csv;
 pub use files::{export_xlsx, import_xlsx};
 pub use range::{Area, MAX_COLUMN, MAX_ROW, column_name, parse_range};
-pub use read::{Cell, SheetInfo, read_area, sheets};
+pub use read::{Cell, SheetInfo, cell_count, read_area, sheet_count, sheets};
 pub use write::{CellWrite, new_sheet, set_inputs};
 
 use ironcalc::base::UserModel;

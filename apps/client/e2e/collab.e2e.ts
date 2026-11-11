@@ -99,5 +99,6 @@ test('the API serves the icons and manifest of the built client', async () => {
 		expect([path, answer.status, answer.headers.get('content-type')]).toEqual([path, 200, type]);
 	}
 	const page = await pageAs('alice', '/');
-	expect(await page.locator('link[rel="icon"]').getAttribute('href')).toBe('/favicon.svg');
+	const href = (await page.locator('link[rel="icon"]').getAttribute('href')) ?? '';
+	expect(new URL(href, stack.base).pathname).toBe('/favicon.svg');
 });

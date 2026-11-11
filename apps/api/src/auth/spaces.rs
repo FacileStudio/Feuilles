@@ -7,11 +7,12 @@ use sqlx::{PgConnection, PgPool};
 use super::retire::{newer, refuse_empty, retire_spaces};
 use uuid::Uuid;
 
-/// Someone who lost access to a workbook: `subject`, or everyone when `None`.
+/// Someone who lost access to a workbook: `subject`, or everyone when `None`. With no workbook,
+/// `subject` loses every workbook: Registre deleted them.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Eviction {
-    /// The workbook.
-    pub workbook: Uuid,
+    /// The workbook, or `None` for all of them.
+    pub workbook: Option<Uuid>,
     /// The person, or `None` when the workbook itself is gone.
     pub subject: Option<String>,
 }
@@ -89,7 +90,9 @@ async fn lost_workbooks(tx: &mut PgConnection, lost: &Pairs) -> Result<Vec<Evict
     for (space, subject) in lost {
         let ids: Vec<Uuid> =
             sqlx::query_scalar("SELECT id FROM workbooks WHERE space_id = $1").bind(space).fetch_all(&mut *tx).await?;
-        evictions.extend(ids.into_iter().map(|workbook| Eviction { workbook, subject: Some(subject.clone()) }));
+        evictions.extend(
+            ids.into_iter().map(|workbook| Eviction { workbook: Some(workbook), subject: Some(subject.clone()) }),
+        );
     }
     Ok(evictions)
 }

@@ -149,8 +149,13 @@ Session flow:
    without an answer: it was already applied.
 
 REJECT reasons: `invalid_argument` (empty, a no-op, or the engine refused it; the server then
-reloads its model from the database), `permission_denied` (a viewer), `rate_limited` (more than
-60 PUSH in a second).
+reloads its model from the database), `too_large` (the batch would take the workbook past 200
+sheets or 5 000 000 filled cells; the server reloads too), `permission_denied` (a viewer),
+`rate_limited` (more than 60 PUSH in a second).
+
+The server checks the socket's session at every ping and right after any logout or back-channel
+logout. A session that is gone or expired closes the socket with 1008 `unauthenticated`. A
+person Registre deletes loses every socket at once.
 
 PRESENCE is sent on every join, leave and cursor change, at most 10 times a second. The server
 pings every 25 seconds. Any client frame, CURSOR included, counts as activity; after 60 seconds
@@ -167,7 +172,7 @@ Close codes:
 | 1009 | A PUSH payload over 1 MiB | Drop that batch |
 | 1011 | The batch could not be stored | Reconnect and resend |
 | 1012 | The workbook went to or out of the trash | Reconnect at once |
-| 1013 | More than 8 MiB of broadcasts waiting for this socket | Reconnect |
+| 1013 | More than 8 MiB of frames (INIT included) waiting for this socket, or more than 8 sockets for this person or 200 for this workbook | Reconnect later |
 
 A refused upgrade (no session, no access, unknown or malformed id) is completed and closed with
 1008 and reason `unauthenticated` or `not_found`, because a browser sees an HTTP error on an

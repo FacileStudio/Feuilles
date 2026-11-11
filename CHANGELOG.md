@@ -4,6 +4,38 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+### Security
+
+- porte-rs v0.5.2. It drops `openidconnect` and `rsa` 0.9.10 (RUSTSEC-2023-0071, the Marvin
+  timing attack) from the build. Back-channel logout now answers 503 when Registre's keys cannot
+  be fetched, instead of 401
+- An open workbook socket now ends with its session. The API checks the session at every ping and
+  right after any logout or back-channel logout, and closes with 1008 `unauthenticated` when it
+  is gone or expired. A person Registre deletes loses every socket in every room at once
+- A batch from a person whose account was just deleted is stored without an author instead of
+  failing its foreign key and closing the room with 1011 for everyone
+- `.xlsx` imports inflate every part through a counted reader before IronCalc reads them, and
+  refuse with 413 past 10 000 parts, 128 MiB for one part or 256 MiB in all (zip bombs). At most
+  two imports parse at once, and the API container has a 3 GiB memory limit
+- A PUSH or API write that takes a workbook past 200 sheets or 5 000 000 filled cells is refused
+  (`too_large`) and the room reloads from the database
+- One person may hold at most 8 sockets on a workbook, and a workbook at most 200; past that the
+  join closes with 1013. The INIT frame now counts against the 8 MiB send budget
+
+### Changed
+
+- A snapshot write never moves a workbook's snapshot back past a newer one, so `engine-export`
+  cannot make a workbook unloadable. `docs/deployment.md` now says to stop the API first
+- Exports load and write the workbook on a blocking thread, not on an async worker
+- The server drops a room's undo history every 20 000 cells written through the API or MCP
+- Oversized frames are recognised by tungstenite's error type, not its message text
+- The Docker images pin `oven/bun:1.4.2` and `rust:1.98.1-bookworm`; the Postgres password comes
+  from `POSTGRES_PASSWORD` (see "The database password" in `docs/deployment.md`)
+
+### Removed
+
+- `spikes/collab`, the F0 spike crate. Its findings are in `docs/architecture.md`
+
 ## [0.6.1] - 2026-11-11
 
 ### Added

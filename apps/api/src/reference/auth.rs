@@ -50,8 +50,8 @@ pub const ROUTES: &[Route] = &[
     },
     Route {
         answer: (200, Object),
-        errors: &[400, 401],
-        description: "Mounted with OIDC. Form `logout_token`, from Registre.",
+        errors: &[400, 401, 503],
+        description: "Mounted with OIDC. Form `logout_token`, from Registre. 503 when Registre's keys cannot be fetched.",
         ..auth(Post, "/api/auth/backchannel-logout", "Back-channel logout")
     },
     Route {

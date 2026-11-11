@@ -11,8 +11,8 @@ pub const TRY_AGAIN_LATER: u16 = 1013;
 pub enum Frame {
     /// A binary frame to send, counted against the limit.
     Data(Vec<u8>),
-    /// The INIT frame: sent first and never counted, since a snapshot may be larger than the
-    /// limit.
+    /// The INIT frame: sent first, even when it alone is larger than the limit, and counted
+    /// until the socket takes it, so broadcasts behind it close a socket that does not read.
     Init(Vec<u8>),
     /// Close the socket with this code and reason.
     Close(u16, String),
@@ -57,8 +57,9 @@ impl Outbox {
         self.tx.send(Frame::Data(frame)).is_ok()
     }
 
-    /// Queues the INIT frame, outside the byte count.
+    /// Queues the INIT frame. It always goes, but its bytes count against the limit.
     pub fn init(&self, frame: Vec<u8>) {
+        self.queued.fetch_add(frame.len(), Ordering::SeqCst);
         let _ = self.tx.send(Frame::Init(frame));
     }
 
@@ -74,7 +75,7 @@ impl Inbox {
     /// The next frame to act on: a close as soon as one is asked for, even with data waiting.
     pub async fn recv(&mut self) -> Option<Frame> {
         let frame = self.rx.recv().await?;
-        if let Frame::Data(bytes) = &frame {
+        if let Frame::Data(bytes) | Frame::Init(bytes) = &frame {
             self.queued.fetch_sub(bytes.len(), Ordering::SeqCst);
         }
         match self.closing.load(Ordering::SeqCst) {
@@ -96,12 +97,20 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn going_over_the_limit_closes_with_1013_ahead_of_the_data() {
+    async fn going_over_the_limit_closes_with_1013_and_init_counts_until_taken() {
         let (outbox, mut inbox) = pair(10);
         assert!(outbox.send(vec![0; 6]));
         assert!(!outbox.send(vec![0; 6]));
         assert!(!outbox.send(vec![0; 1]));
         assert_eq!(inbox.recv().await, Some(Frame::Close(TRY_AGAIN_LATER, String::new())));
+        let (outbox, mut inbox) = pair(10);
+        outbox.init(vec![0; 25]);
+        assert!(!outbox.send(vec![0; 1]), "a broadcast behind an untaken INIT over the limit closes");
+        assert_eq!(inbox.recv().await, Some(Frame::Close(TRY_AGAIN_LATER, String::new())));
+        let (outbox, mut inbox) = pair(10);
+        outbox.init(vec![0; 25]);
+        assert_eq!(inbox.recv().await, Some(Frame::Init(vec![0; 25])));
+        assert!(outbox.send(vec![0; 8]), "a taken INIT frees its bytes");
     }
 
     #[tokio::test]

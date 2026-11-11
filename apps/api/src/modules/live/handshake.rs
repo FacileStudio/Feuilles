@@ -44,3 +44,15 @@ pub(super) async fn close(socket: &mut WebSocket, code: u16, reason: &str) {
     };
     let _ = tokio::time::timeout(CLOSE_WAIT, answered).await;
 }
+
+/// Whether a receive error is tungstenite refusing a message over the size limit.
+pub(super) fn too_long(error: &axum::Error) -> bool {
+    let mut source: Option<&(dyn std::error::Error + 'static)> = Some(error);
+    while let Some(current) = source {
+        if matches!(current.downcast_ref::<tungstenite::Error>(), Some(tungstenite::Error::Capacity(_))) {
+            return true;
+        }
+        source = current.source();
+    }
+    false
+}

@@ -44,9 +44,10 @@ The `Hub` runs `min(4, cores)` shard threads. A workbook always maps to the same
 model is only touched by one thread. For each PUSH, in arrival order, the room:
 
 1. drops it when its `(origin, client_seq)` was already accepted;
-2. applies it to the authoritative model; on error it sends REJECT to the sender, then drops the
+2. applies it to the authoritative model; on error, or when the model now holds more than 200
+   sheets or 5 000 000 filled cells, it sends REJECT to the sender, then drops the
    model and reloads it from the database, because IronCalc 0.9.1 can half-apply a batch it
-   refuses (F0 finding A, `spikes/collab/tests/reject.rs`);
+   refuses (F0 finding A, `spikes/collab/tests/reject.rs` in v0.6.1);
 3. inserts the batch into `workbook_updates`, bumps `workbooks.seq` and the origin's ack in one
    transaction; if that fails the room is dropped and every socket closed with 1011;
 4. broadcasts UPDATE to every socket, sender included.

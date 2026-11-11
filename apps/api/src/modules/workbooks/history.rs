@@ -97,7 +97,7 @@ pub async fn append(pool: &PgPool, id: Uuid, batch: &Batch<'_>) -> Result<(), Er
     let mut tx = pool.begin().await.map_err(failed("store a batch"))?;
     sqlx::query(
         "INSERT INTO workbook_updates (workbook_id, seq, author_id, payload, origin, client_seq)
-         VALUES ($1, $2, $3, $4, $5, $6)",
+         VALUES ($1, $2, (SELECT id FROM porte_users WHERE id = $3), $4, $5, $6)",
     )
     .bind(id)
     .bind(signed(batch.seq))
@@ -137,16 +137,23 @@ async fn store_ack(tx: &mut sqlx::PgConnection, id: Uuid, origin: &Origin, clien
     .map_err(failed("store a batch"))
 }
 
-/// Replaces the snapshot with `bytes` at `seq` and drops the batches it now includes.
+/// Replaces the snapshot with `bytes` at `seq` and drops the batches it now includes. Does
+/// nothing when the stored snapshot is already newer or the log is behind `seq`: a stale writer
+/// (a second process, an `engine-export` against a live database) must never move it back.
 pub async fn snapshot(pool: &PgPool, id: Uuid, bytes: &[u8], seq: u64) -> Result<(), Error> {
     let mut tx = pool.begin().await.map_err(failed("write a snapshot"))?;
-    sqlx::query("UPDATE workbooks SET snapshot = $2, snapshot_seq = $3 WHERE id = $1")
-        .bind(id)
-        .bind(bytes)
-        .bind(signed(seq))
-        .execute(&mut *tx)
-        .await
-        .map_err(failed("write a snapshot"))?;
+    let written = sqlx::query(
+        "UPDATE workbooks SET snapshot = $2, snapshot_seq = $3 WHERE id = $1 AND snapshot_seq <= $3 AND seq >= $3",
+    )
+    .bind(id)
+    .bind(bytes)
+    .bind(signed(seq))
+    .execute(&mut *tx)
+    .await
+    .map_err(failed("write a snapshot"))?;
+    if written.rows_affected() == 0 {
+        return tx.commit().await.map_err(failed("write a snapshot"));
+    }
     sqlx::query("DELETE FROM workbook_updates WHERE workbook_id = $1 AND seq <= $2")
         .bind(id)
         .bind(signed(seq))

@@ -23,7 +23,7 @@ locally and not deployed yet.
 
 | Layer | Tech |
 |---|---|
-| API | Rust 1.98, axum 0.8, sqlx 0.9, PostgreSQL 16, IronCalc 0.9.1, tronc-rs 0.3.0, porte-rs 0.4.0 |
+| API | Rust 1.98, axum 0.8, sqlx 0.9, PostgreSQL 16, IronCalc 0.9.1, tronc-rs 0.3.0, porte-rs 0.5.2 |
 | Client | SvelteKit 2 with Svelte 5 runes, `@ironcalc/wasm` 0.9.1, muse (`@facile/muse`) |
 | Deploy | Docker Compose, one container and one replica behind Traefik |
 
@@ -67,7 +67,6 @@ apps/
   client/    SvelteKit client, served by the API from CLIENT_DIR
 docs/        Architecture, configuration, development, deployment, API
 scripts/     The gate, the dev database, the version stamp, the deploy check
-spikes/      F0 collaboration spike, not shipped
 ```
 
 ## Documentation

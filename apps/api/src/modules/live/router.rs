@@ -73,5 +73,5 @@ async fn member(state: &AppState, identity: &Identity) -> Result<Member, Error> 
     .map_err(|e| Error::internal("read the member", e))?;
     let (name, email, picture) = row.unwrap_or_default();
     let name = if name.trim().is_empty() { email.split('@').next().unwrap_or_default().to_owned() } else { name };
-    Ok(Member { user_id: identity.user_id, subject: caller.subject, name, picture })
+    Ok(Member { user_id: identity.user_id, subject: caller.subject, name, picture, session_id: identity.session_id })
 }

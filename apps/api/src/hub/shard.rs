@@ -9,7 +9,7 @@ use sqlx::PgPool;
 use tronc::Error;
 use uuid::Uuid;
 
-use super::room::{POLICY, Room};
+use super::room::{Conn, POLICY, Room};
 use super::{Command, Limits};
 use crate::engine;
 
@@ -71,14 +71,19 @@ impl Shard {
     fn handle(&mut self, command: Command) {
         let (ctx, rooms) = (&self.ctx, &mut self.rooms);
         match command {
-            Command::Join { workbook, member, role, origin, outbox, reply } => {
-                let _ = reply.send(room(ctx, rooms, workbook).map(|room| room.join(member, role, origin, outbox)));
+            Command::Join { workbook, seat, reply } => {
+                let joined = room(ctx, rooms, workbook).and_then(|room| room.join(&ctx.limits, seat));
+                let _ = reply.send(joined);
             }
             Command::Read { workbook, query, reply } => {
                 let _ = reply.send(room(ctx, rooms, workbook).and_then(|room| room.read(&query)));
             }
             Command::Write { workbook, author, changes, reply } => {
                 let _ = reply.send(room(ctx, rooms, workbook).and_then(|room| room.write(ctx, author, &changes)));
+            }
+            Command::EvictEverywhere { subject } => {
+                let gone = |_: u32, conn: &Conn| conn.member.subject.as_deref() == Some(subject.as_str());
+                rooms.values_mut().for_each(|room| room.remove(ctx, gone, Some(POLICY)));
             }
             command => {
                 if let Some(room) = command.workbook().and_then(|id| rooms.get_mut(&id)) {

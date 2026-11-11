@@ -4,6 +4,19 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-11
+
+### Changed
+
+- The Feuilles logo is the suite catalog's mark (`solar:table-minimalistic-bold-duotone`), in
+  the sidebar and on the sign-in screen
+
+### Fixed
+
+- Favicons, touch and manifest icons, the link preview image and the head metadata come from
+  the muse v0.19.0 brand generator, so Feuilles's tab, title, description and og/twitter tags match
+  the suite catalog
+
 ## [0.6.2] - 2026-11-11
 
 ### Security

@@ -19,6 +19,14 @@ pub struct Limits {
     pub snapshot_every: u64,
     /// The shortest gap between two PRESENCE frames.
     pub presence_interval: Duration,
+    /// The most sheets a workbook may reach. A batch past it is refused `too_large`.
+    pub max_sheets: usize,
+    /// The most filled cells a workbook may reach. A batch past it is refused `too_large`.
+    pub max_cells: usize,
+    /// The most sockets one person may hold on one workbook. Past it, a join closes with 1013.
+    pub max_user_sockets: usize,
+    /// The most sockets one workbook may hold. Past it, a join closes with 1013.
+    pub max_room_sockets: usize,
 }
 
 impl Default for Limits {
@@ -32,6 +40,10 @@ impl Default for Limits {
             idle_room: Duration::from_secs(60),
             snapshot_every: 256,
             presence_interval: Duration::from_millis(100),
+            max_sheets: 200,
+            max_cells: 5_000_000,
+            max_user_sockets: 8,
+            max_room_sockets: 200,
         }
     }
 }

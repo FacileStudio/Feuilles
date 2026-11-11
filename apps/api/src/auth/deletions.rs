@@ -5,7 +5,8 @@ use uuid::Uuid;
 use super::spaces::{Evict, Eviction};
 
 /// Erases what Feuilles holds about a person Registre deleted: their personal workbooks, their
-/// space memberships and their account. Space workbooks stay, with no owner.
+/// space memberships and their account. Space workbooks stay, with no owner. Their sockets close
+/// in every room.
 pub struct AppData {
     pool: PgPool,
     evict: Evict,
@@ -46,7 +47,10 @@ impl PersonDeleted for AppData {
     async fn on_person_deleted(&self, provider: &str, subject: &str) -> Result<(), DirectoryError> {
         let erased =
             erase_person(&self.pool, provider, subject).await.map_err(|e| DirectoryError::Failed(e.to_string()))?;
-        (self.evict)(erased.into_iter().map(|workbook| Eviction { workbook, subject: None }).collect());
+        let mut evictions: Vec<Eviction> =
+            erased.into_iter().map(|workbook| Eviction { workbook: Some(workbook), subject: None }).collect();
+        evictions.push(Eviction { workbook: None, subject: Some(subject.to_owned()) });
+        (self.evict)(evictions);
         Ok(())
     }
 }

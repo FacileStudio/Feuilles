@@ -75,7 +75,8 @@ async fn losing_access_closes_with_1008_and_a_failed_store_with_1011() {
     let (mut kept, mut gone) = (connect(addr, &id, &owner.token).await, connect(addr, &id, &member.token).await);
     let (_, _, mut model) = init(&mut kept).await;
     init(&mut gone).await;
-    let eviction = api::auth::Eviction { workbook: id.parse().expect("uuid"), subject: Some(member.subject.clone()) };
+    let eviction =
+        api::auth::Eviction { workbook: Some(id.parse().expect("uuid")), subject: Some(member.subject.clone()) };
     api::modules::live::evictor(state.hub.clone())(vec![eviction]);
     assert_eq!(gone.closed().await, Some(1008));
     sqlx::query("DELETE FROM workbooks WHERE id = $1::uuid").bind(&id).execute(&state.pool).await.expect("delete");

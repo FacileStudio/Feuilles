@@ -15,6 +15,9 @@ use crate::state::AppState;
 
 const XLSX: &str = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
+/// Imports that may parse at once. Each can hold a few hundred MiB while IronCalc reads it.
+static IMPORTS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(2);
+
 struct Upload {
     name: String,
     bytes: Vec<u8>,
@@ -63,6 +66,7 @@ pub async fn import(
 ) -> Result<Response, Error> {
     let upload = read_upload(&mut multipart).await?;
     let space = space_scope(&state, &identity, upload.space_id.as_deref()).await?;
+    let _turn = IMPORTS.acquire().await.map_err(|e| Error::internal("wait for an import slot", e))?;
     let title = imports::title(&upload.name);
     let (bytes, name, format) = (upload.bytes, title.clone(), upload.format);
     let model = tokio::task::spawn_blocking(move || imports::read(&bytes, &name, format))
@@ -79,8 +83,7 @@ pub async fn export_xlsx(
     Path(id): Path<String>,
 ) -> Result<Response, Error> {
     let (row, _) = require(&state, &identity, parse_id(&id)?, Access::Viewer).await?;
-    let current = model::snapshot(&state, row.id).await?;
-    let bytes = engine::export_xlsx(&current)?;
+    let bytes = model::export(&state, row.id, engine::export_xlsx).await?;
     Ok(attachment(XLSX, &format!("{}.xlsx", row.title), bytes))
 }
 
@@ -92,8 +95,8 @@ pub async fn export_csv(
     Query(query): Query<SheetQuery>,
 ) -> Result<Response, Error> {
     let (row, _) = require(&state, &identity, parse_id(&id)?, Access::Viewer).await?;
-    let current = model::snapshot(&state, row.id).await?;
-    let text = engine::export_csv(&current, query.sheet)?;
+    let sheet = query.sheet;
+    let text = model::export(&state, row.id, move |current| engine::export_csv(current, sheet)).await?;
     Ok(attachment("text/csv; charset=utf-8", &format!("{}.csv", row.title), text.into_bytes()))
 }
 

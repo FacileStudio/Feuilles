@@ -5,11 +5,13 @@ use ironcalc::export::save_xlsx_to_writer;
 use ironcalc::import::load_from_xlsx_bytes;
 use tronc::Error;
 
-use super::{Model, language};
+use super::{Model, inflate, language};
 
-/// A model from the bytes of an `.xlsx` file, or 400 when IronCalc cannot read it.
+/// A model from the bytes of an `.xlsx` file: 400 when IronCalc cannot read it, 413 when it
+/// inflates past [`inflate::MAX_TOTAL_BYTES`].
 pub fn import_xlsx(bytes: &[u8], name: &str, locale: &str, timezone: &str, language_id: &str) -> Result<Model, Error> {
     let language_id = language(language_id)?;
+    inflate::check(bytes)?;
     let unreadable = |e: String| Error::invalid(format!("the file is not a workbook IronCalc can read: {e}"));
     let workbook = load_from_xlsx_bytes(bytes, name, locale, timezone).map_err(|e| unreadable(e.to_string()))?;
     let mut model = UserModel::from_model(Inner::from_workbook(workbook, language_id).map_err(unreadable)?);

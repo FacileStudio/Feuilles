@@ -33,6 +33,7 @@ pub fn api(state: &AppState) -> Router<AppState> {
         .route("/registre/sync", state.kits.syncer.nudge_route())
         .route("/registre/deletions", state.kits.deletions.route())
         .fallback(|| async { tronc::Error::not_found("no such route") })
+        .layer(axum::middleware::from_fn_with_state(state.clone(), modules::live::on_logout))
 }
 
 /// The whole app: health, `/version`, `/api`, then the SPA.

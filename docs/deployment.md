@@ -68,14 +68,24 @@ Usage: `api import-xlsx --space <registre space id> [--title <title>] [--dry-run
 a file that is world-readable (`chmod 644` it first). The image has no shell and no `rm`, so the
 copies stay in `/tmp` until the next deploy recreates the container.
 
+## The database password
+
+`docker-compose.yml` reads `POSTGRES_PASSWORD`, with a default for local runs only. Set it in the
+Dokploy environment through the `dokploy-env-safe` flow. Postgres applies `POSTGRES_PASSWORD` only
+when it creates the volume, so on an existing database change it first, then redeploy:
+`docker exec feuilles-db psql -U feuilles -c "ALTER USER feuilles PASSWORD '<new>'"`.
+
 ## Upgrading IronCalc
 
 Snapshots and batches are `bitcode` of IronCalc's private types. A new `ironcalc` may not read
 old bytes, and the browser's `@ironcalc/wasm` must match the server exactly. Never bump
 `ironcalc` in a routine dependency update. For a bump:
 
-1. With the old image: `docker run --rm -e DATABASE_URL=... -v /srv/feuilles-backup:/backup <old-image> engine-export /backup`.
-   It writes a fresh snapshot of every workbook and an `.xlsx` copy to `/backup/<id>.xlsx`.
+1. Stop `feuilles-api` first (`docker stop feuilles-api`), so no room writes while the export
+   runs. Then, with the old image: `docker run --rm -e DATABASE_URL=... -v /srv/feuilles-backup:/backup <old-image> engine-export /backup`.
+   It writes a fresh snapshot of every workbook and an `.xlsx` copy to `/backup/<id>.xlsx`. A
+   snapshot write never moves a workbook's snapshot back past one a live room already wrote, but
+   edits made after the export are still missing from the `.xlsx` copies.
 2. Bump `ironcalc = "=X.Y.Z"` in `apps/api/Cargo.toml`, `ENGINE_VERSION` in
    `apps/api/src/engine/mod.rs` (a test checks they agree), and `@ironcalc/wasm` in the client.
 3. Deploy the new image, and run step 4 before anyone opens a workbook.

@@ -16,8 +16,10 @@ async fn snapshots_replace_spaces_and_members_and_report_who_lost_access() {
     let second = snapshot(11, vec![("s1", vec![member("a", "owner")])]);
     let mut evictions = apply_snapshot(pool, &second).await.expect("apply");
     evictions.sort();
-    let mut want =
-        vec![Eviction { workbook: in_s1, subject: Some("b".into()) }, Eviction { workbook: in_s2, subject: None }];
+    let mut want = vec![
+        Eviction { workbook: Some(in_s1), subject: Some("b".into()) },
+        Eviction { workbook: Some(in_s2), subject: None },
+    ];
     want.sort();
     assert_eq!(evictions, want);
     let left: Vec<uuid::Uuid> = sqlx::query_scalar("SELECT id FROM workbooks").fetch_all(pool).await.expect("ids");
@@ -28,7 +30,7 @@ async fn snapshots_replace_spaces_and_members_and_report_who_lost_access() {
     let name: String =
         sqlx::query_scalar("SELECT name FROM spaces WHERE id = 's1'").fetch_one(pool).await.expect("name");
     assert_eq!(name, "s1 name");
-    assert_eq!(through_the_syncer(pool).await, [Eviction { workbook: in_s1, subject: Some("a".into()) }]);
+    assert_eq!(through_the_syncer(pool).await, [Eviction { workbook: Some(in_s1), subject: Some("a".into()) }]);
 }
 
 async fn through_the_syncer(pool: &sqlx::PgPool) -> Vec<Eviction> {

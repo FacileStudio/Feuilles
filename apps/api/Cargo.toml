@@ -32,8 +32,10 @@ time = { version = "0.3.55", features = ["serde", "formatting", "parsing"] }
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "signal", "sync", "time", "net"] }
 tokio-util = "0.7.20"
 tracing = "0.1.44"
+tungstenite = { version = "0.29.0", default-features = false }
 utoipa = { version = "6.0.0", features = ["uuid", "time"] }
 uuid = { version = "1.29.2", features = ["v4", "serde"] }
+zip = { version = "9.5.0", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 tronc = { git = "https://github.com/FacileStudio/tronc-rs", tag = "v0.3.0", features = ["testdb", "mcptest"] }

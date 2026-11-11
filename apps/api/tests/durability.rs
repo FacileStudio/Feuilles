@@ -110,3 +110,22 @@ async fn restarted(port: u16, id: &str, token: &str, origin: [u8; 16], acked: &B
     child.kill().expect("kill");
     child.wait().expect("reap");
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_stale_snapshot_never_moves_the_stored_one_back() {
+    let Some(state) = state().await else { return };
+    let router = api::router::build_router(state.clone(), Default::default()).expect("router");
+    let me = person(&state).await;
+    let id: uuid::Uuid = create(&router, &me, None).await["id"].as_str().expect("id").parse().expect("uuid");
+    let at =
+        |seq: i64| sqlx::query("UPDATE workbooks SET seq = $2, snapshot_seq = $2 WHERE id = $1").bind(id).bind(seq);
+    at(5).execute(&state.pool).await.expect("seq");
+    api::modules::workbooks::history::snapshot(&state.pool, id, b"stale", 3).await.expect("snapshot");
+    let (seq, bytes): (i64, Vec<u8>) = sqlx::query_as("SELECT snapshot_seq, snapshot FROM workbooks WHERE id = $1")
+        .bind(id)
+        .fetch_one(&state.pool)
+        .await
+        .expect("row");
+    assert_eq!(seq, 5);
+    assert_ne!(bytes, b"stale");
+}

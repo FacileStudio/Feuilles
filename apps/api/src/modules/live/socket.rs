@@ -3,10 +3,11 @@ use std::time::Instant;
 use axum::extract::ws::{Message, WebSocket};
 use uuid::Uuid;
 
-use super::handshake::{close, hello};
+use super::handshake::{close, hello, too_long};
 use super::rate::Rate;
+use super::session;
 use crate::hub::protocol::{self, ClientFrame, FrameError};
-use crate::hub::{Command, Frame, Hub, Joined, Limits, Member, Outbox, Role};
+use crate::hub::{Command, Frame, Hub, Joined, Limits, Member, Outbox, Role, Seat};
 
 /// Close codes the socket sends itself.
 pub mod codes {
@@ -39,6 +40,7 @@ struct Connection {
     outbox: Outbox,
     rate: Rate,
     heard: Instant,
+    session_id: i64,
 }
 
 /// Runs one collaboration socket until either side closes it. The first client frame must be
@@ -51,19 +53,20 @@ pub async fn run(mut socket: WebSocket, hub: Hub, workbook: Uuid, member: Member
         Err(_) => return,
     };
     let (outbox, mut inbox) = crate::hub::pair(limits.send_buffer);
-    let join = outbox.clone();
-    let joined = hub.ask(|reply| Command::Join { workbook, member, role, origin, outbox: join, reply }).await;
-    let Ok(Joined { client_id }) = joined else {
-        return close(&mut socket, codes::INTERNAL, "the workbook could not be opened").await;
+    let (session_id, mut sessions) = (member.session_id, hub.sessions.watch());
+    let seat = Seat { member, role, origin, outbox: outbox.clone() };
+    let Some(client_id) = enter(&mut socket, &hub, workbook, seat).await else {
+        return;
     };
-    let rate = Rate::new(limits.pushes_per_second);
-    let mut ping = tokio::time::interval(limits.ping);
-    let mut conn = Connection { hub, limits, workbook, client_id, role, outbox, rate, heard: Instant::now() };
+    let (rate, mut ping) = (Rate::new(limits.pushes_per_second), tokio::time::interval(limits.ping));
+    let mut conn =
+        Connection { hub, limits, workbook, client_id, role, outbox, rate, heard: Instant::now(), session_id };
     let flow = loop {
         let flow = tokio::select! {
             frame = inbox.recv() => conn.outbound(&mut socket, frame).await,
             message = socket.recv() => conn.inbound(message),
             _ = ping.tick() => conn.ping(&mut socket).await,
+            _ = sessions.recv() => session::check(&conn.hub, conn.session_id).await,
         };
         if !matches!(flow, Flow::Continue) {
             break flow;
@@ -94,7 +97,7 @@ impl Connection {
             Some(Ok(Message::Binary(bytes))) => self.frame(&bytes),
             Some(Ok(Message::Text(_))) => Flow::Close(codes::UNSUPPORTED, "binary frames only".into()),
             Some(Ok(Message::Ping(_) | Message::Pong(_))) => Flow::Continue,
-            Some(Err(error)) if error.to_string().contains("Space limit exceeded") => too_big(),
+            Some(Err(error)) if too_long(&error) => too_big(),
             Some(Ok(Message::Close(_)) | Err(_)) | None => Flow::Stop,
         }
     }
@@ -133,9 +136,27 @@ impl Connection {
         if self.heard.elapsed() >= self.limits.silence {
             return Flow::Close(codes::GOING_AWAY, "no frame in 60 seconds".into());
         }
+        if let Flow::Close(code, reason) = session::check(&self.hub, self.session_id).await {
+            return Flow::Close(code, reason);
+        }
         match socket.send(Message::Ping(Vec::new().into())).await {
             Ok(()) => Flow::Continue,
             Err(_) => Flow::Stop,
+        }
+    }
+}
+
+/// Joins the room, or closes the socket: 1013 when it holds too many sockets, 1011 otherwise.
+async fn enter(socket: &mut WebSocket, hub: &Hub, workbook: Uuid, seat: Seat) -> Option<u32> {
+    match hub.ask(|reply| Command::Join { workbook, seat, reply }).await {
+        Ok(Joined { client_id }) => Some(client_id),
+        Err(error) if error.code == tronc::Code::ResourceExhausted => {
+            close(socket, crate::hub::TRY_AGAIN_LATER, &error.message).await;
+            None
+        }
+        Err(_) => {
+            close(socket, codes::INTERNAL, "the workbook could not be opened").await;
+            None
         }
     }
 }

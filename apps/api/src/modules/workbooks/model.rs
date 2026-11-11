@@ -31,12 +31,19 @@ pub async fn sheets(state: &AppState, id: Uuid) -> Result<Vec<SheetInfo>, Error>
     }
 }
 
-/// A copy of the model as it is now, for an export.
-pub async fn snapshot(state: &AppState, id: Uuid) -> Result<Model, Error> {
-    match ask(state, id, Query::Bytes).await? {
-        Answer::Bytes(bytes, language) => engine::load(&bytes, language),
-        _ => Err(unexpected()),
-    }
+/// Runs `export` on a copy of the model as it is now, on a blocking thread: loading and writing
+/// a large workbook would otherwise hold an async worker the rooms' database calls need.
+pub async fn export<T: Send + 'static>(
+    state: &AppState,
+    id: Uuid,
+    export: impl FnOnce(&Model) -> Result<T, Error> + Send + 'static,
+) -> Result<T, Error> {
+    let Answer::Bytes(bytes, language) = ask(state, id, Query::Bytes).await? else {
+        return Err(unexpected());
+    };
+    tokio::task::spawn_blocking(move || export(&engine::load(&bytes, language)?))
+        .await
+        .map_err(|e| Error::internal("export a workbook", e))?
 }
 
 /// The cells of `area`.

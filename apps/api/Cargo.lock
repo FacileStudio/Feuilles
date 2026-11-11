@@ -92,8 +92,10 @@ dependencies = [
  "tower",
  "tracing",
  "tronc",
+ "tungstenite",
  "utoipa",
  "uuid",
+ "zip",
 ]
 
 [[package]]

@@ -143,3 +143,29 @@ async fn any_client_frame_keeps_a_socket_alive() {
     let mut ws = Ws(sink.reunite(stream).expect("reunite"));
     assert!(matches!(ws.next_data().await, Event::Update { seq: 1, .. }));
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_batch_past_the_sheet_cap_is_refused_and_the_room_reloads() {
+    let Some((state, addr, me, id)) = opened(Limits { max_sheets: 2, ..Limits::default() }).await else { return };
+    let mut ws = connect(addr, &id, &me.token).await;
+    let (_, _, mut model) = init(&mut ws).await;
+    model.new_sheet().expect("sheet");
+    model.new_sheet().expect("sheet");
+    ws.push(1, &model.flush_send_queue()).await;
+    assert_eq!(ws.next_data().await, Event::Reject { client_seq: 1, reason: "too_large".into() });
+    let mut late = connect(addr, &id, &me.token).await;
+    let Event::Init { seq, snapshot, .. } = late.next_data().await else { panic!("no INIT") };
+    assert_eq!((seq, api::engine::sheet_count(&common::sheet::model(&snapshot))), (0, 1));
+    let stored = api::modules::workbooks::history::load(&state.pool, id.parse().expect("uuid")).await.expect("load");
+    assert_eq!(stored.seq, 0, "the refused batch was stored");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn one_person_cannot_open_more_sockets_than_the_cap() {
+    let Some((_, addr, me, id)) = opened(Limits { max_user_sockets: 2, ..Limits::default() }).await else { return };
+    let (mut first, mut second) = (connect(addr, &id, &me.token).await, connect(addr, &id, &me.token).await);
+    init(&mut first).await;
+    init(&mut second).await;
+    let mut third = connect(addr, &id, &me.token).await;
+    assert_eq!(third.closed().await, Some(1013));
+}

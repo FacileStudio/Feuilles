@@ -7,6 +7,7 @@ mod limits;
 mod outbox;
 pub mod protocol;
 mod room;
+mod sessions;
 mod shard;
 
 use std::sync::{Arc, Mutex, mpsc};
@@ -20,6 +21,7 @@ use uuid::Uuid;
 pub use limits::Limits;
 pub use outbox::{Frame, Inbox, Outbox, TRY_AGAIN_LATER, pair};
 pub use protocol::Cursor;
+pub use sessions::Sessions;
 
 use crate::engine::{Area, Cell, CellWrite, SheetInfo};
 pub use crate::modules::workbooks::history::Origin;
@@ -44,6 +46,21 @@ pub struct Member {
     pub name: String,
     /// Shown to the others.
     pub picture: String,
+    /// The `porte_sessions` row the socket opened with, re-checked on every ping and logout.
+    pub session_id: i64,
+}
+
+/// One socket asking to join a room.
+#[derive(Debug)]
+pub struct Seat {
+    /// Who.
+    pub member: Member,
+    /// What they may do.
+    pub role: Role,
+    /// Their browser tab, for resends.
+    pub origin: Origin,
+    /// Where the room sends their frames.
+    pub outbox: Outbox,
 }
 
 /// What a join hands back.
@@ -105,7 +122,7 @@ pub type Reply<T> = oneshot::Sender<Result<T, Error>>;
 #[derive(Debug)]
 pub enum Command {
     /// A socket joins, and its first frame is INIT.
-    Join { workbook: Uuid, member: Member, role: Role, origin: Origin, outbox: Outbox, reply: Reply<Joined> },
+    Join { workbook: Uuid, seat: Seat, reply: Reply<Joined> },
     /// A batch from a socket.
     Push { workbook: Uuid, client_id: u32, client_seq: u32, payload: Vec<u8> },
     /// A selection from a socket.
@@ -118,6 +135,8 @@ pub enum Command {
     Write { workbook: Uuid, author: Option<i64>, changes: Vec<Change>, reply: Reply<Written> },
     /// `subject` lost access: close their sockets with 1008.
     Evict { workbook: Uuid, subject: String },
+    /// `subject` was deleted: close their sockets in every room with 1008. Goes to every shard.
+    EvictEverywhere { subject: String },
     /// Close every socket with `code` and unload the room.
     Close { workbook: Uuid, code: u16 },
     /// Snapshot every room, close every socket with 1001, stop.
@@ -135,7 +154,7 @@ impl Command {
             | Command::Write { workbook, .. }
             | Command::Evict { workbook, .. }
             | Command::Close { workbook, .. } => Some(*workbook),
-            Command::Shutdown => None,
+            Command::EvictEverywhere { .. } | Command::Shutdown => None,
         }
     }
 }
@@ -146,19 +165,17 @@ pub struct Hub {
     shards: Arc<Vec<mpsc::Sender<Command>>>,
     threads: Arc<Mutex<Vec<JoinHandle<()>>>>,
     limits: Limits,
+    /// What the sockets need to check their sessions.
+    pub sessions: Sessions,
 }
 
 impl Hub {
-    /// Starts `shards` threads (at least one) with the default limits.
-    pub fn start(pool: PgPool, runtime: tokio::runtime::Handle, shards: usize) -> Hub {
-        Hub::with_limits(pool, runtime, shards, Limits::default())
-    }
-
-    /// [`Hub::start`] with other limits.
+    /// Starts `shards` threads (at least one) with `limits`.
     pub fn with_limits(pool: PgPool, runtime: tokio::runtime::Handle, shards: usize, limits: Limits) -> Hub {
         let (senders, threads) =
             (0..shards.max(1)).map(|index| shard::spawn(index, pool.clone(), runtime.clone(), limits.clone())).unzip();
-        Hub { shards: Arc::new(senders), threads: Arc::new(Mutex::new(threads)), limits }
+        let sessions = Sessions::new(pool);
+        Hub { shards: Arc::new(senders), threads: Arc::new(Mutex::new(threads)), limits, sessions }
     }
 
     /// `min(4, available_parallelism)`.
@@ -171,14 +188,19 @@ impl Hub {
         &self.limits
     }
 
-    /// Hands `command` to the shard owning its workbook; `Shutdown` goes to every shard.
+    /// Hands `command` to the shard owning its workbook; `Shutdown` and `EvictEverywhere` go to
+    /// every shard.
     pub fn send(&self, command: Command) {
-        match command.workbook() {
-            Some(id) => {
+        match command {
+            Command::Shutdown => self.shards.iter().for_each(|shard| _ = shard.send(Command::Shutdown)),
+            Command::EvictEverywhere { subject } => self.shards.iter().for_each(|shard| {
+                _ = shard.send(Command::EvictEverywhere { subject: subject.clone() });
+            }),
+            command => {
+                let id = command.workbook().unwrap_or_default();
                 let index = usize::try_from(id.as_u128() % self.shards.len() as u128).unwrap_or(0);
                 let _ = self.shards[index].send(command);
             }
-            None => self.shards.iter().for_each(|shard| _ = shard.send(Command::Shutdown)),
         }
     }
 

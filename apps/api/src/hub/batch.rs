@@ -10,13 +10,25 @@ use crate::modules::workbooks::history::{self, Batch};
 /// The close code when the database refused a batch the model already took.
 pub const INTERNAL: u16 = 1011;
 
+/// Cells the server may write before it drops the model's undo history, which nothing on the
+/// server ever undoes.
+pub const UNDO_CELLS: usize = 20_000;
+
+/// PUSH payloads larger than this pay a full cell count after they apply. So does every 64th
+/// batch and every batch that changes the sheets.
+pub const COUNT_CELLS_PAST: usize = 64 << 10;
+
+/// The REJECT reason for a batch that takes the workbook past `max_sheets` or `max_cells`.
+pub const TOO_LARGE: &str = "too_large";
+
 impl Room {
     /// A batch from a socket: refused to its sender, or stored and broadcast to everyone.
     pub fn push(&mut self, ctx: &Ctx, client_id: u32, client_seq: u32, payload: &[u8]) {
         let Some(conn) = self.conns.get(&client_id) else {
             return;
         };
-        let refuse = |reason: &str| _ = conn.outbox.send(protocol::reject(client_seq, reason));
+        let outbox = conn.outbox.clone();
+        let refuse = |reason: &str| _ = outbox.send(protocol::reject(client_seq, reason));
         if conn.role == Role::Viewer {
             return refuse("permission_denied");
         }
@@ -27,11 +39,24 @@ impl Room {
             return;
         }
         let (author, origin) = (Some(conn.member.user_id), Some((conn.origin, client_seq)));
-        if self.model.apply_external_diffs(payload).is_err() {
-            refuse("invalid_argument");
+        if let Some(reason) = self.apply_push(ctx, payload) {
+            refuse(reason);
             return self.reload(ctx);
         }
         let _ = self.accept(ctx, client_id, Batch { seq: self.seq + 1, author, origin, payload });
+    }
+
+    /// Applies a PUSH payload: the REJECT reason when the engine refused it or it took the model
+    /// past a cap. The caller then reloads the model.
+    fn apply_push(&mut self, ctx: &Ctx, payload: &[u8]) -> Option<&'static str> {
+        let sheets = engine::sheet_count(&self.model);
+        if self.model.apply_external_diffs(payload).is_err() {
+            return Some("invalid_argument");
+        }
+        let count_cells = sheets != engine::sheet_count(&self.model)
+            || payload.len() > COUNT_CELLS_PAST
+            || self.seq.is_multiple_of(64);
+        self.oversized(ctx, count_cells).then_some(TOO_LARGE)
     }
 
     /// Stores a batch the model took as the next seq, then broadcasts it, sender included.
@@ -70,15 +95,30 @@ impl Room {
         }
     }
 
+    /// Whether the model went past the sheet cap, or past the cell cap when `count_cells`: the
+    /// count walks every cell, so a push pays it only when it changed the sheets or was large.
+    fn oversized(&self, ctx: &Ctx, count_cells: bool) -> bool {
+        engine::sheet_count(&self.model) > ctx.limits.max_sheets
+            || (count_cells && engine::cell_count(&self.model) > ctx.limits.max_cells)
+    }
+
     /// Applies an API or MCP write as client 0.
     pub fn write(&mut self, ctx: &Ctx, author: Option<i64>, changes: &[Change]) -> Result<Written, Error> {
-        if let Err(error) = apply(&mut self.model, changes) {
+        let applied = apply(&mut self.model, changes).and_then(|()| match self.oversized(ctx, true) {
+            true => Err(Error::too_large("the workbook would pass its sheet or cell limit")),
+            false => Ok(()),
+        });
+        if let Err(error) = applied {
             self.reload(ctx);
             return Err(error);
         }
         let payload = self.model.flush_send_queue();
         let batch = Batch { seq: self.seq + 1, author, origin: None, payload: &payload };
         let seq = self.accept(ctx, 0, batch)?;
+        self.undo_cells += changes.len();
+        if self.undo_cells >= UNDO_CELLS {
+            self.forget_undo();
+        }
         Ok(Written { seq, sheets: engine::sheets(&self.model) })
     }
 

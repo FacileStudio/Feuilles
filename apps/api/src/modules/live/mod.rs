@@ -3,10 +3,15 @@
 mod handshake;
 mod rate;
 mod router;
+mod session;
 mod socket;
 
 use std::sync::Arc;
 
+use axum::extract::{Request, State};
+use axum::middleware::Next;
+use axum::response::Response;
+use http::Method;
 use uuid::Uuid;
 
 use crate::auth::Evict;
@@ -34,15 +39,28 @@ pub fn close(hub: &Hub, workbooks: impl IntoIterator<Item = Uuid>) {
     workbooks.into_iter().for_each(|workbook| hub.send(Command::Close { workbook, code: POLICY }));
 }
 
-/// The directory's eviction hook: a person who lost a space loses its sockets, and a deleted
-/// workbook loses all of them.
+/// The directory's eviction hook: a person who lost a space loses its sockets, a deleted
+/// workbook loses all of them, and a deleted person loses every socket they hold.
 pub fn evictor(hub: Hub) -> Evict {
     Arc::new(move |evictions| {
         for eviction in evictions {
-            match eviction.subject {
-                Some(subject) => hub.send(Command::Evict { workbook: eviction.workbook, subject }),
-                None => close(&hub, [eviction.workbook]),
+            match (eviction.workbook, eviction.subject) {
+                (Some(workbook), Some(subject)) => hub.send(Command::Evict { workbook, subject }),
+                (Some(workbook), None) => close(&hub, [workbook]),
+                (None, Some(subject)) => hub.send(Command::EvictEverywhere { subject }),
+                (None, None) => {}
             }
         }
     })
+}
+
+/// Middleware over `/api`: after a logout or a back-channel logout succeeds, every socket checks
+/// its session again, so a revoked one closes with 1008 at once instead of at the next ping.
+pub async fn on_logout(State(state): State<AppState>, request: Request, next: Next) -> Response {
+    let logout = request.method() == Method::POST && request.uri().path().ends_with("logout");
+    let response = next.run(request).await;
+    if logout && response.status().is_success() {
+        state.hub.sessions.changed();
+    }
+    response
 }

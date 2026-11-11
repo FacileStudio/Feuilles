@@ -2,6 +2,16 @@
 
 All notable changes to Feuilles. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.5.0] - 2026-11-11
+
+### Added
+
+- `api import-xlsx --space <id> [--title <title>] [--dry-run] <file.xlsx>...`: an operator
+  command, run inside the container, that imports `.xlsx` files as ownerless workbooks of an
+  existing space through the same IronCalc path as `POST /api/workbooks/import`. It refuses an
+  unknown or deleted space and never creates one. See "Importing spreadsheets" in
+  `docs/deployment.md`
+
 ## [0.4.3] - 2026-11-10
 
 ### Changed

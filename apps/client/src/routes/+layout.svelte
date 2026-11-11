@@ -38,4 +38,4 @@
 	</AuthScreen>
 {/if}
 
-<Toaster />
+<Toaster class="max-md:pb-24" />

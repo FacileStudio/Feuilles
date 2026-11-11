@@ -4,6 +4,22 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+### Added
+
+- `favicon.svg`, `favicon.ico`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png` and
+  `site.webmanifest`, drawn from the sidebar's table glyph the way Sablier draws its own. The API
+  serves them from the built client; the e2e checks each one
+- A "Page not found" page for unknown addresses, instead of SvelteKit's bare "404 Not Found"
+
+### Fixed
+
+- The grid's selection and fill outlines are CSS outlines, not borders
+- A workbook that cannot be opened no longer shows an empty download menu, and its message keeps
+  a margin from the window edge
+- On phones: the workbook title is no longer cut to "Budget …" (the back button shows its arrow
+  only), toasts sit above the bottom navigation, and Settings > Advanced stacks each version
+  under its label instead of wrapping "IronCalc 0.9.1"
+
 ## [0.6.0] - 2026-11-11
 
 ### Added

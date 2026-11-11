@@ -4,6 +4,8 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-11
+
 ### Security
 
 - porte-rs v0.5.2. It drops `openidconnect` and `rsa` 0.9.10 (RUSTSEC-2023-0071, the Marvin

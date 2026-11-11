@@ -7,7 +7,7 @@ export const account = $state<{ user: SessionUser | null; loaded: boolean; error
 	error: null
 });
 
-/** Loads the session once per page load. */
+/** Loads the session once per page load, then refreshes the Registre profile behind it. */
 export async function loadAccount(): Promise<void> {
 	try {
 		account.user = await backend.session();
@@ -17,6 +17,13 @@ export async function loadAccount(): Promise<void> {
 	} finally {
 		account.loaded = true;
 	}
+	if (account.user) void refreshProfile();
+}
+
+/** Asks the API to re-read the Registre profile, and reloads the session when it changed. */
+export async function refreshProfile(): Promise<void> {
+	const synced = await backend.syncProfile().catch(() => false);
+	if (synced) account.user = (await backend.session().catch(() => account.user)) ?? account.user;
 }
 
 /** Signs out, then goes back to the sign-in screen. */

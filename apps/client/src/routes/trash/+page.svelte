@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ConfirmModal, EmptyState, PageHeader, Spinner, type MenuEntry } from '@facile/muse';
 	import { backend, type Workbook } from '$lib/backend';
+	import ContextMenu from '$lib/components/ContextMenu.svelte';
 	import { icons } from '$lib/icons';
 	import { spaces } from '$lib/state/spaces.svelte';
 	import WorkbookRow from '$lib/workbooks/WorkbookRow.svelte';
@@ -9,6 +10,7 @@
 	const list = new WorkbookList(true);
 	let doomed = $state<Workbook | null>(null);
 	let confirmOpen = $state(false);
+	let contextMenu = $state<{ x: number; y: number; workbook: Workbook } | null>(null);
 
 	$effect(() => {
 		if (spaces.loaded) void list.load(spaces.currentId);
@@ -40,7 +42,14 @@
 {:else}
 	<ul class="flex flex-col gap-2">
 		{#each list.items as workbook (workbook.id)}
-			<WorkbookRow {workbook} actions={actions(workbook)} />
+			<WorkbookRow
+				{workbook}
+				actions={actions(workbook)}
+				oncontextmenu={(e) => {
+					e.preventDefault();
+					contextMenu = { x: e.clientX, y: e.clientY, workbook };
+				}}
+			/>
 		{/each}
 	</ul>
 {/if}
@@ -54,3 +63,12 @@
 	onConfirm={destroy}
 	onCancel={() => (confirmOpen = false)}
 />
+
+{#if contextMenu}
+	<ContextMenu
+		x={contextMenu.x}
+		y={contextMenu.y}
+		items={actions(contextMenu.workbook)}
+		onclose={() => (contextMenu = null)}
+	/>
+{/if}

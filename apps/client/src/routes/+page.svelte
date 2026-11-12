@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { Button, Dropzone, EmptyState, PageHeader, Spinner, toast, type MenuEntry } from '@facile/muse';
 	import { backend, exportUrl, type Workbook } from '$lib/backend';
+	import ContextMenu from '$lib/components/ContextMenu.svelte';
 	import { icons } from '$lib/icons';
 	import { spaces } from '$lib/state/spaces.svelte';
 	import RenameModal from '$lib/workbooks/RenameModal.svelte';
@@ -14,6 +15,7 @@
 	let busy = $state(false);
 	let renaming = $state<Workbook | null>(null);
 	let renameOpen = $state(false);
+	let contextMenu = $state<{ x: number; y: number; workbook: Workbook } | null>(null);
 
 	$effect(() => {
 		if (spaces.loaded) void list.load(spaces.currentId);
@@ -99,9 +101,26 @@
 {:else}
 	<ul class="flex flex-col gap-2">
 		{#each list.items as workbook (workbook.id)}
-			<WorkbookRow {workbook} href={`/w/${workbook.id}`} actions={actions(workbook)} />
+			<WorkbookRow
+				{workbook}
+				href={`/w/${workbook.id}`}
+				actions={actions(workbook)}
+				oncontextmenu={(e) => {
+					e.preventDefault();
+					contextMenu = { x: e.clientX, y: e.clientY, workbook };
+				}}
+			/>
 		{/each}
 	</ul>
 {/if}
 
 <RenameModal bind:open={renameOpen} title={renaming?.title ?? ''} onSave={rename} />
+
+{#if contextMenu}
+	<ContextMenu
+		x={contextMenu.x}
+		y={contextMenu.y}
+		items={actions(contextMenu.workbook)}
+		onclose={() => (contextMenu = null)}
+	/>
+{/if}

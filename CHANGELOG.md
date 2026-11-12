@@ -4,6 +4,11 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+### Added
+
+- Three-dots action icon (`solar:menu-dots-linear`) and right-click context menu on workbook rows in the workbook list and trash
+
+
 ## [0.7.1] - 2026-11-12
 
 ### Security

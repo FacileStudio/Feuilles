@@ -4,13 +4,26 @@
 	import { icons } from '$lib/icons';
 	import { ago } from './format';
 
-	let { workbook, actions, href }: { workbook: Workbook; actions: MenuEntry[]; href?: string } = $props();
+	let {
+		workbook,
+		actions,
+		href,
+		oncontextmenu
+	}: {
+		workbook: Workbook;
+		actions: MenuEntry[];
+		href?: string;
+		oncontextmenu?: (e: MouseEvent) => void;
+	} = $props();
 
 	const sheets = $derived(workbook.sheets.length === 1 ? '1 sheet' : `${workbook.sheets.length} sheets`);
 	const when = $derived(workbook.trashed_at ? `Trashed ${ago(workbook.trashed_at)}` : `Edited ${ago(workbook.updated_at)}`);
 </script>
 
-<li class="flex min-h-14 items-center gap-3 rounded-fc-md bg-fc-component px-4 py-2 transition-colors hover:bg-fc-surface">
+<li
+	class="flex min-h-14 items-center gap-3 rounded-fc-md bg-fc-component px-4 py-2 transition-colors hover:bg-fc-surface"
+	{oncontextmenu}
+>
 	<Icon icon={icons.workbook} size={20} class="text-fc-fg-muted" />
 	{#if href}
 		<a {href} class="min-w-0 flex-1 rounded-fc-sm focus-visible:outline-2 focus-visible:outline-fc-ring">
@@ -25,7 +38,7 @@
 	{/if}
 	<Menu label={`Actions for ${workbook.title}`} items={actions} align="end">
 		{#snippet trigger()}
-			<Icon icon={icons.menu} size={18} />
+			<Icon icon={icons.more} size={18} />
 		{/snippet}
 	</Menu>
 </li>

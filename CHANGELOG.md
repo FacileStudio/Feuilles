@@ -4,6 +4,13 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-12
+
+### Added
+
+- Card grid home view with responsive column tracking and workbook preview thumbnail
+- Quick-create card button when the last grid row is incomplete
+
 ## [0.7.1] - 2026-11-12
 
 ### Added

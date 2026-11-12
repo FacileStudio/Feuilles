@@ -63,7 +63,7 @@
 					type="button"
 					role="tab"
 					aria-selected={active}
-					class="h-8 px-3 text-fc-sm whitespace-nowrap {active ? 'font-medium text-fc-fg' : 'text-fc-fg-muted hover:text-fc-fg'}"
+					class="h-8 px-3 text-fc-sm whitespace-nowrap cursor-pointer {active ? 'font-medium text-fc-fg' : 'text-fc-fg-muted hover:text-fc-fg'}"
 					onclick={() => commands.select((model) => model.setSelectedSheet(sheet.index))}
 					ondblclick={() => startRename(sheet.index, sheet.name)}
 				>

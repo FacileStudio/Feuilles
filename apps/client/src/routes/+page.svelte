@@ -144,7 +144,7 @@
 				>
 					<Card
 						href="/w/{workbook.id}"
-						class="flex h-full flex-col gap-3 p-3 transition-[background-color,translate] duration-300 hover:-translate-y-1 motion-reduce:transition-none"
+						class="flex h-full flex-col gap-3 p-3 transition-[background-color,translate] duration-300 hover:-translate-y-1 motion-reduce:transition-none cursor-pointer"
 					>
 						<WorkbookPreview {workbook} />
 						<span class="flex min-w-0 flex-col gap-1 px-1 pb-1">
@@ -170,7 +170,7 @@
 						type="button"
 						onclick={create}
 						disabled={busy}
-						class="group flex h-full min-h-[220px] w-full flex-col items-center justify-center gap-3 rounded-fc-lg bg-fc-surface/50 p-4 text-center transition-[background-color,translate] duration-300 hover:-translate-y-1 hover:bg-fc-surface focus-visible:ring-2 focus-visible:ring-fc-accent motion-reduce:transition-none"
+						class="group flex h-full min-h-[220px] w-full flex-col items-center justify-center gap-3 rounded-fc-lg bg-fc-surface/50 p-4 text-center transition-[background-color,translate] duration-300 hover:-translate-y-1 hover:bg-fc-surface focus-visible:ring-2 focus-visible:ring-fc-accent motion-reduce:transition-none cursor-pointer disabled:cursor-not-allowed"
 						aria-label="New workbook"
 					>
 						<span

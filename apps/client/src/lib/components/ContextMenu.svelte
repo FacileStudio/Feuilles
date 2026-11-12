@@ -91,7 +91,7 @@
 				role="menuitem"
 				disabled={item.disabled}
 				onclick={() => run(item)}
-				class="flex min-h-9 w-full items-center gap-2 rounded-fc-sm px-2.5 py-1.5 text-left text-fc-sm transition-colors hover:bg-fc-surface focus-visible:outline-2 focus-visible:outline-fc-ring disabled:cursor-not-allowed disabled:opacity-50 {item.tone === 'danger' ? 'text-fc-danger' : 'text-fc-fg'}"
+				class="flex min-h-9 w-full items-center gap-2 rounded-fc-sm px-2.5 py-1.5 text-left text-fc-sm transition-colors hover:bg-fc-surface focus-visible:outline-2 focus-visible:outline-fc-ring cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 {item.tone === 'danger' ? 'text-fc-danger' : 'text-fc-fg'}"
 			>
 				{#if item.icon}<Icon icon={item.icon} size={16} />{/if}
 				<span class="truncate">{item.label}</span>

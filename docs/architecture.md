@@ -107,6 +107,10 @@ owner.
   coordinates. No operational transform.
 - Rebuilding `view` drops its undo history; it happens only when two people edit within one
   round trip.
+- The sheet and cell caps run after a batch is applied. IronCalc 0.9.1 keeps its diff type
+  private, so the room cannot inspect a batch first: a batch of sheet duplications or large
+  row inserts does all its work before the cap refuses it. Upstream request:
+  https://github.com/ironcalc/IronCalc/issues/1710
 - Snapshots are about 15 bytes per filled cell: 1M cells is 15 MB and loads in under 100 ms.
 - One API replica. A deploy disconnects every editor for a few seconds; clients reconnect and
   resend.

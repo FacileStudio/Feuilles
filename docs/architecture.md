@@ -100,6 +100,11 @@ or a workbook:
 erases the person's personal workbooks, memberships and account; space workbooks stay with no
 owner.
 
+The deletion ledger also guards sign-in. porte refuses an erased subject at the login callback,
+on an MCP token's first call and at the profile sync, with a 403 `permission_denied`. If an
+account comes back for an erased subject anyway, the next push or poll of that notice erases it
+again (`Deletions::with_holds`, porte-rs v0.7.0).
+
 ## Known limits of v1
 
 - `RAND()` and `RANDBETWEEN()` compute a different value on every replica. Inputs agree.

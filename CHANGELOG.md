@@ -4,6 +4,12 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-12
+
+### Fixed
+
+- Explicit pointer cursor for clickable buttons, context menu items, sheet tabs, and workbook cards
+
 ## [0.8.0] - 2026-11-12
 
 ### Added

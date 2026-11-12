@@ -52,20 +52,26 @@ pub async fn export_all(pool: &PgPool, dir: &Path) -> Result<(), Error> {
 }
 
 /// Loads every workbook with this binary's engine. One that fails is re-imported from
-/// `<dir>/<id>.xlsx`. Fails when any workbook could be neither loaded nor re-imported.
+/// `<dir>/<id>.xlsx`. Stamps the engine version only on the workbooks that loaded or were
+/// re-imported. Fails when any workbook could be neither loaded nor re-imported.
 pub async fn verify_all(pool: &PgPool, dir: &Path) -> Result<(), Error> {
-    let (mut loaded, mut restored, mut lost) = (0, 0, Vec::new());
+    let (mut loaded, mut restored, mut verified, mut lost) = (0, 0, Vec::new(), Vec::new());
     for id in ids(pool).await? {
         match history::load(pool, id).await {
             Ok(_) => loaded += 1,
             Err(_) => match reimport(pool, id, dir).await {
                 Ok(()) => restored += 1,
-                Err(error) => lost.push(format!("{id}: {}", error.message)),
+                Err(error) => {
+                    lost.push(format!("{id}: {}", error.message));
+                    continue;
+                }
             },
         }
+        verified.push(id);
     }
-    sqlx::query("UPDATE workbooks SET engine_version = $1")
+    sqlx::query("UPDATE workbooks SET engine_version = $1 WHERE id = ANY($2)")
         .bind(ENGINE_VERSION)
+        .bind(&verified)
         .execute(pool)
         .await
         .map_err(|e| Error::internal("stamp the engine version", e))?;

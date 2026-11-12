@@ -7,8 +7,8 @@ How to run the API locally, run the tests and pass the gate.
 - Rust 1.98.1 (`apps/api/rust-toolchain.toml`) with rustfmt and clippy
 - Docker, for Postgres 16 on `127.0.0.1:5653`
 - `filet` 0.18 or later, `lefthook` and `bun` through `mise install`
-- Network access to `github.com/FacileStudio`: `Cargo.toml` fetches tronc-rs (tag `v0.3.0`)
-  and porte-rs (tag `v0.5.2`) by git URL
+- Network access to `github.com/FacileStudio`: `Cargo.toml` fetches tronc-rs (tag `v0.4.0`)
+  and porte-rs (tag `v0.7.0`) by git URL
 
 ## Setup
 
@@ -88,6 +88,7 @@ dev machine. Install it elsewhere with `cd apps/client && bunx playwright-core i
 | `tests/directory_safety.rs` | A dropped space is soft-deleted and its workbooks trashed, an empty snapshot is refused, a space comes back, members lose access at once |
 | `tests/live_sync.rs` | Two real sockets, API writes live, presence, snapshots, shutdown |
 | `tests/live_limits.rs` | Reject and reload, viewer, rate limit, 1009, 1003, 1002, silence, 1013, keepalive, the sheet cap, the socket cap |
+| `tests/erased.rs` | An erased subject cannot sign in again; a re-created account is erased at the next poll |
 | `tests/live_revocation.rs` | Logout and expiry close sockets with 1008, a deleted person's push, eviction from every room |
 | `tests/live_access.rs` | Idempotent resend, 1008 refusals, eviction, 1011, the Origin check |
 | `tests/durability.rs` | Kills a real `api` process during a burst; every acknowledged batch survives |

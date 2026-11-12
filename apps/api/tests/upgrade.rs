@@ -32,8 +32,11 @@ async fn export_then_verify_restores_a_workbook_whose_snapshot_no_longer_loads()
     let version = text(pool, "SELECT engine_version FROM workbooks WHERE id = $1::uuid", &id).await;
     assert_eq!(version, api::engine::ENGINE_VERSION);
     std::fs::remove_file(dir.join(format!("{id}.xlsx"))).expect("remove");
-    text(pool, "UPDATE workbooks SET snapshot = 'x' WHERE id = $1::uuid RETURNING ''", &id).await;
+    text(pool, "UPDATE workbooks SET snapshot = 'x', engine_version = 'old' WHERE id = $1::uuid RETURNING ''", &id)
+        .await;
     assert!(verify_all(pool, &dir).await.is_err(), "a workbook with no backup must fail the verify");
+    let version = text(pool, "SELECT engine_version FROM workbooks WHERE id = $1::uuid", &id).await;
+    assert_eq!(version, "old", "a workbook the verify lost must keep its old engine version");
     std::fs::remove_dir_all(&dir).expect("clean");
 }
 

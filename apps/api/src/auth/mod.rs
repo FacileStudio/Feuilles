@@ -1,4 +1,5 @@
-//! porte wiring: sessions, Registre sign-in, the directory sync and account deletions.
+//! porte wiring: sessions, Registre sign-in, the directory sync and account deletions. A person
+//! Registre deleted cannot sign in again, and an account re-created for them is erased again.
 
 mod deletions;
 mod members;
@@ -82,7 +83,9 @@ impl Kits {
         let syncer = Syncer::new(client.clone(), apply, Duration::ZERO);
         let erase = Arc::new(AppData::new(pool.clone(), evict));
         let state = Arc::new(DeletionState::new(pool.clone()));
-        let deletions = Deletions::new(client, erase, Some(Arc::new(store.clone())), Some(state), Duration::ZERO);
+        let deletions = Deletions::new(client, erase, Some(Arc::new(store.clone())), Some(state), Duration::ZERO)
+            .with_holds(Arc::new(store.clone()));
+        let oidc = oidc.with_erased(Arc::new(deletions.clone()));
         Ok(Kits { sessions, oidc, syncer, deletions, store })
     }
 }

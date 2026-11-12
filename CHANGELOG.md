@@ -4,6 +4,28 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-12
+
+### Security
+
+- porte-rs v0.7.0 and tronc-rs v0.4.0, still one tronc crate. A person Registre deleted can no
+  longer sign in again: the login callback, an MCP token's first call and the profile sync
+  refuse an erased subject with 403 `permission_denied` before any account is written. If an
+  account comes back for an erased subject anyway, the next deletion push or poll erases it
+  again
+
+### Fixed
+
+- `api engine-verify` stamps the engine version only on the workbooks it loaded or re-imported.
+  A workbook it lost keeps its old version
+- The e2e icon check reads the SVG favicon link, now that the head lists two icons
+
+### Documentation
+
+- `docs/architecture.md` links the upstream IronCalc request for inspectable diffs
+  (https://github.com/ironcalc/IronCalc/issues/1710), which the room needs to refuse a batch
+  before it runs
+
 ## [0.7.0] - 2026-11-11
 
 ### Changed

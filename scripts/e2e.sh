@@ -25,4 +25,4 @@ echo "==> e2e: build"
 (cd apps/client && bun run build >/dev/null)
 
 echo "==> e2e: run"
-(cd apps/client && bun test ./e2e/collab.e2e.ts)
+(cd apps/client && bun test ./e2e/collab.e2e.ts ./e2e/theme.e2e.ts)

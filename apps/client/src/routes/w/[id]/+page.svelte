@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { Alert, Avatar, Badge, Button, EmptyState, Icon, Menu, Spinner, StatusDot, toast } from '@facile/muse';
+	import { Alert, Badge, Button, ConnectionHint, EmptyState, Icon, Menu, Presence, Spinner, toast } from '@facile/muse';
 	import { ApiError, backend, exportUrl, signInUrl, socketPath, type Workbook } from '$lib/backend';
 	import { claimOrigin, type OriginClaim } from '$lib/engine/origin';
 	import { Role } from '$lib/engine/protocol';
@@ -10,9 +10,11 @@
 	import { loadEngine, modelFromBytes } from '$lib/engine/wasm';
 	import WorkbookView from '$lib/grid/WorkbookView.svelte';
 	import { icons } from '$lib/icons';
+	import { embedded } from '$lib/shell/embed';
 	import RenameModal from '$lib/workbooks/RenameModal.svelte';
 	import { explain } from '$lib/workbooks/list.svelte';
-	import { noticeText, statusLabel } from '$lib/workbooks/status';
+	import { getColor } from '$lib/grid/canvas/palette';
+	import { connectionState, noticeText } from '$lib/workbooks/status';
 
 	type Phase =
 		| { kind: 'loading' }
@@ -89,33 +91,44 @@
 				]
 			: []
 	);
-	const status = $derived(session ? statusLabel(session.status) : null);
+	const peers = $derived(
+		(session?.presence ?? []).map((person) => ({
+			id: person.client_id,
+			name: person.name || 'Someone',
+			color: getColor(person.client_id),
+			picture: person.picture || undefined
+		}))
+	);
+	const embed = $derived(embedded(page.url));
+	const fullUrl = $derived(`/w/${page.params.id ?? ''}`);
 </script>
 
 <svelte:head><title>{workbook?.title ?? 'Workbook'} · Feuilles</title></svelte:head>
 
 <div class="flex h-full min-h-0 flex-col">
-	<header class="flex min-h-14 shrink-0 items-center gap-2 px-3 py-2 sm:gap-3">
-		<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/"><span class="max-sm:sr-only">Workbooks</span></Button>
-		<button
-			type="button"
-			class="min-w-0 truncate rounded-fc-sm px-2 py-1 text-left text-fc-lg font-semibold text-fc-fg hover:bg-fc-surface"
-			disabled={!session?.canEdit}
-			onclick={() => (renameOpen = true)}
-		>
-			{workbook?.title ?? ''}
-		</button>
+	<header class="flex shrink-0 items-center gap-2 px-3 {embed ? 'min-h-11 py-1' : 'min-h-14 py-2 sm:gap-3'}">
+		{#if embed}
+			<span class="min-w-0 truncate text-fc-sm font-semibold text-fc-fg">{workbook?.title ?? ''}</span>
+		{:else}
+			<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/"><span class="max-sm:sr-only">Workbooks</span></Button>
+			<button
+				type="button"
+				class="min-w-0 truncate rounded-fc-sm px-2 py-1 text-left text-fc-lg font-semibold text-fc-fg hover:bg-fc-surface"
+				disabled={!session?.canEdit}
+				onclick={() => (renameOpen = true)}
+			>
+				{workbook?.title ?? ''}
+			</button>
+		{/if}
 		{#if session?.role === Role.Viewer}<Badge>View only</Badge>{/if}
 		<div class="ml-auto flex items-center gap-3">
-			{#if session}
-				<div class="flex -space-x-2" aria-label="People here">
-					{#each session.presence as person (person.client_id)}
-						<Avatar src={person.picture || undefined} name={person.name} size="sm" title={person.name} />
-					{/each}
-				</div>
-			{/if}
-			{#if status}<StatusDot tone={status.tone} label={status.label} pulse={status.tone === 'warning'} />{/if}
-			{#if workbook}
+			<Presence {peers} />
+			{#if session}<ConnectionHint state={connectionState(session.status)} />{/if}
+			{#if embed}
+				<Button variant="ghost" size="sm" icon={icons.external} href={fullUrl} target="_blank" rel="noopener">
+					Open in Feuilles
+				</Button>
+			{:else if workbook}
 				<Menu label="Download" items={downloads} align="end">
 					{#snippet trigger()}<Icon icon={icons.download} size={18} />{/snippet}
 				</Menu>

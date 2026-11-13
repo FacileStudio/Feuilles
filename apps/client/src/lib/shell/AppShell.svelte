@@ -7,6 +7,7 @@
 	import { signOut } from '$lib/state/account.svelte';
 	import { loadSpaces, selectSpace, spaces } from '$lib/state/spaces.svelte';
 	import { setTheme, theme } from '$lib/state/theme.svelte';
+	import { embedded } from './embed';
 
 	let { user, children }: { user: SessionUser; children: Snippet } = $props();
 
@@ -21,6 +22,7 @@
 	]);
 	const onSettings = $derived(isActive('/settings'));
 	const fullBleed = $derived(page.url.pathname.startsWith('/w/'));
+	const chromeless = $derived(fullBleed && embedded(page.url));
 	const menuUser = $derived({ name: user.name?.trim() || user.email, email: user.email, avatar: user.avatar_url || undefined });
 	const userMenu = $derived({
 		settingsHref: '/settings',
@@ -38,24 +40,26 @@
 </script>
 
 <div class="flex h-dvh w-full overflow-hidden bg-fc-page">
-	<div class="hidden h-full shrink-0 p-3 md:block">
-		<SideBar
-			icon={icons.logo}
-			title="Feuilles"
-			bind:collapsed
-			{pages}
-			spaces={switcher}
-			activeSpaceId={spaces.currentId}
-			onSpaceSelect={selectSpace}
-			personalSpaceLabel="Personal"
-			manageSpacesHref="https://sso.facile.studio/spaces"
-			user={menuUser}
-			userHref="/settings"
-			userActive={onSettings}
-			{userMenu}
-			class="h-full"
-		/>
-	</div>
+	{#if !chromeless}
+		<div class="hidden h-full shrink-0 p-3 md:block">
+			<SideBar
+				icon={icons.logo}
+				title="Feuilles"
+				bind:collapsed
+				{pages}
+				spaces={switcher}
+				activeSpaceId={spaces.currentId}
+				onSpaceSelect={selectSpace}
+				personalSpaceLabel="Personal"
+				manageSpacesHref="https://sso.facile.studio/spaces"
+				user={menuUser}
+				userHref="/settings"
+				userActive={onSettings}
+				{userMenu}
+				class="h-full"
+			/>
+		</div>
+	{/if}
 
 	<main class="flex min-w-0 flex-1 flex-col overflow-auto overscroll-contain {fullBleed ? '' : 'pb-28 md:pb-0'}">
 		{#if !fullBleed}

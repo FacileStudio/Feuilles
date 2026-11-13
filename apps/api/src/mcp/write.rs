@@ -2,12 +2,12 @@ use serde::{Deserialize, Serialize};
 use tronc::mcp::{self, Answer, Call, Tool, ToolError};
 use uuid::Uuid;
 
-use super::{identity, spec};
+use super::{ADD, OVERWRITE, identity, spec, with, workbook};
 use crate::engine::{CellWrite, SheetInfo};
 use crate::hub::Change;
 use crate::modules::workbooks::actions;
 use crate::modules::workbooks::model;
-use crate::modules::workbooks::service::{Access, require};
+use crate::modules::workbooks::service::Access;
 use crate::modules::workbooks::types::{CreateWorkbook, Workbook};
 use crate::state::AppState;
 
@@ -50,35 +50,45 @@ pub struct WriteOutput {
     pub sheets: Vec<SheetInfo>,
 }
 
-/// The tools that change workbooks. None deletes anything.
+/// The tools that write cells and add workbooks and sheets.
 pub fn tools(state: &AppState) -> Vec<Tool> {
-    let (one, two, three) = (state.clone(), state.clone(), state.clone());
     vec![
         mcp::tool(
             spec(
                 "feuilles_write_cells",
                 "Write cells",
-                "Sets cell inputs, values or formulas, live for everyone.",
-                false,
+                "Call to set cell inputs, values or formulas; it overwrites what the cells held. Live for everyone.",
+                OVERWRITE,
             ),
-            move |call, input| write_cells(one.clone(), call, input),
+            with(state, write_cells),
         ),
         mcp::tool(
-            spec("feuilles_create_workbook", "Create a workbook", "Creates an empty workbook with one sheet.", false),
-            move |call, input| create(two.clone(), call, input),
+            spec(
+                "feuilles_create_workbook",
+                "Create a workbook",
+                "Call to start a new workbook. It has one empty sheet.",
+                ADD,
+            ),
+            with(state, create),
         ),
         mcp::tool(
-            spec("feuilles_add_sheet", "Add a sheet", "Adds a sheet at the end of a workbook.", false),
-            move |call, input| add_sheet(three.clone(), call, input),
+            spec("feuilles_add_sheet", "Add a sheet", "Call to add a sheet at the end of a workbook.", ADD),
+            with(state, add_sheet),
         ),
     ]
 }
 
-async fn change(state: &AppState, call: &Call, workbook: Uuid, changes: Vec<Change>) -> Result<WriteOutput, ToolError> {
-    let me = identity(call)?;
-    let (row, _) = require(state, &me, workbook, Access::Editor).await?;
+/// Applies `changes` through the workbook's room, so open editors see them, and answers the
+/// sheets after it.
+pub(super) async fn change(
+    state: &AppState,
+    call: &Call,
+    id: Uuid,
+    changes: Vec<Change>,
+) -> Result<WriteOutput, ToolError> {
+    let (row, me) = workbook(state, call, id, Access::Editor).await?;
     if row.trashed_at.is_some() {
-        return Err(ToolError("the workbook is in the trash and read-only".into()));
+        return Err(ToolError::new("the workbook is in the trash and read-only; restore it in Feuilles first"));
     }
     let written = model::change(state, row.id, me.user_id, changes).await?;
     Ok(WriteOutput { seq: written.seq, sheets: written.sheets })

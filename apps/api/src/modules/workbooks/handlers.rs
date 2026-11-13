@@ -5,8 +5,8 @@ use porte::Identity;
 use tronc::Error;
 use tronc::json::Json;
 
-use super::service::{self, Access, parse_id, require};
-use super::store;
+use super::service::{Access, parse_id, require};
+use super::store::{self, Bind};
 use super::types::{CreateWorkbook, ListQuery, RenameWorkbook, Workbook, WorkbookList};
 use super::{actions, model};
 use crate::modules::live;
@@ -50,9 +50,7 @@ pub async fn rename(
     Path(id): Path<String>,
     Json(body): Json<RenameWorkbook>,
 ) -> Result<Json<Workbook>, Error> {
-    let title = service::title(&body.title)?;
-    let (row, _) = require(&state, &identity, parse_id(&id)?, Access::Editor).await?;
-    let row = store::update(&state.pool, row.id, "title = $2, updated_at = now()", Some(&title)).await?;
+    let row = actions::rename(&state, &identity, parse_id(&id)?, &body.title).await?;
     let sheets = model::sheets(&state, row.id).await?;
     Ok(Json(row.into_workbook(sheets)))
 }
@@ -63,9 +61,7 @@ pub async fn trash(
     identity: Identity,
     Path(id): Path<String>,
 ) -> Result<StatusCode, Error> {
-    let (row, _) = require(&state, &identity, parse_id(&id)?, Access::Manager).await?;
-    store::update(&state.pool, row.id, "trashed_at = COALESCE(trashed_at, now())", None).await?;
-    live::reopen(&state, row.id);
+    actions::trash(&state, &identity, parse_id(&id)?).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -76,7 +72,7 @@ pub async fn restore(
     Path(id): Path<String>,
 ) -> Result<Json<Workbook>, Error> {
     let (row, _) = require(&state, &identity, parse_id(&id)?, Access::Manager).await?;
-    let row = store::update(&state.pool, row.id, "trashed_at = NULL", None).await?;
+    let row = store::update(&state.pool, row.id, "trashed_at = NULL", Bind::Nothing).await?;
     live::reopen(&state, row.id);
     let sheets = model::sheets(&state, row.id).await?;
     Ok(Json(row.into_workbook(sheets)))

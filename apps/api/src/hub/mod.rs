@@ -23,7 +23,7 @@ pub use outbox::{Frame, Inbox, Outbox, TRY_AGAIN_LATER, pair};
 pub use protocol::Cursor;
 pub use sessions::Sessions;
 
-use crate::engine::{Area, Cell, CellWrite, SheetInfo};
+use crate::engine::{Area, Cell, CellWrite, Edit, SheetInfo};
 pub use crate::modules::workbooks::history::Origin;
 
 /// What a connection may do in its room.
@@ -104,6 +104,9 @@ pub enum Change {
     Cell(CellWrite),
     /// Add a sheet at the end, optionally named.
     AddSheet(Option<String>),
+    /// Change the structure of a sheet: rename, move or delete it, insert or delete rows and
+    /// columns, or clear an area.
+    Edit(Edit),
 }
 
 /// What a write answers.

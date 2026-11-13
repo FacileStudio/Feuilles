@@ -77,6 +77,7 @@ async fn read_all_pages(client: &mcptest::Client, id: &str) -> (usize, usize) {
         rows += page["rows"].as_array().expect("rows").len();
         pages += 1;
         cursor = page["next_cursor"].as_str().map(str::to_owned);
+        assert_eq!(page["hint"].is_string(), cursor.is_some());
         if cursor.is_none() {
             return (rows, pages);
         }

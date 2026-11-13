@@ -35,7 +35,7 @@ async function createWorkbook(): Promise<string> {
 
 async function live(page: Page): Promise<void> {
 	await page.getByRole('grid', { name: 'Sheet' }).waitFor();
-	await page.getByText('Live').waitFor();
+	await page.waitForFunction(() => !document.querySelector('header [role="status"]'));
 	await page.getByRole('grid', { name: 'Sheet' }).focus();
 }
 

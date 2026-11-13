@@ -2,6 +2,7 @@ use ironcalc::base::cell::CellValue;
 use serde::Serialize;
 use tronc::Error;
 
+use super::sheets::{SheetRef, sheet_index, sheet_names};
 use super::{Area, Model};
 
 /// One cell as the API reads it.
@@ -45,8 +46,7 @@ pub fn sheets(model: &Model) -> Vec<SheetInfo> {
 
 /// The cells of `area` on `sheet`, row by row, or 404 for a sheet that does not exist.
 pub fn read_area(model: &Model, sheet: u32, area: Area) -> Result<Vec<Vec<Cell>>, Error> {
-    let inner = model.get_model();
-    inner.workbook.worksheet(sheet).map_err(|_| Error::not_found(format!("sheet {sheet} does not exist")))?;
+    sheet_index(&sheet_names(model), &SheetRef::Index(sheet))?;
     (area.top..=area.bottom)
         .map(|row| (area.left..=area.right).map(|column| cell(model, sheet, row, column)).collect())
         .collect()

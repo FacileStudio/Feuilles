@@ -119,13 +119,25 @@ pub async fn insert(pool: &PgPool, new: NewRow<'_>) -> Result<Row, Error> {
         .map_err(failed("create a workbook"))
 }
 
+/// What an update binds after the id.
+#[derive(Debug, Clone, Copy)]
+pub enum Bind<'a> {
+    /// Nothing: the `SET` clause is complete.
+    Nothing,
+    /// `$2`, a title.
+    Title(&'a str),
+    /// `$2`, a space or `None` for personal, and `$3`, an owner.
+    Scope(Option<&'a str>, i64),
+}
+
 /// Runs one `UPDATE workbooks SET <set> WHERE id = $1` and returns the row.
-pub async fn update(pool: &PgPool, id: Uuid, set: &'static str, title: Option<&str>) -> Result<Row, Error> {
+pub async fn update(pool: &PgPool, id: Uuid, set: &'static str, bind: Bind<'_>) -> Result<Row, Error> {
     let sql = format!("UPDATE workbooks SET {set} WHERE id = $1 RETURNING {COLUMNS}");
     let query = sqlx::query_as::<_, Row>(sqlx::AssertSqlSafe(sql)).bind(id);
-    let query = match title {
-        Some(title) => query.bind(title),
-        None => query,
+    let query = match bind {
+        Bind::Nothing => query,
+        Bind::Title(title) => query.bind(title),
+        Bind::Scope(space, owner) => query.bind(space).bind(owner),
     };
     query.fetch_optional(pool).await.map_err(failed("update a workbook"))?.ok_or_else(|| Error::not_found("not found"))
 }

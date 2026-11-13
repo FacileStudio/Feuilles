@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { noticeText, statusLabel } from './status';
+import { connectionState, noticeText } from './status';
 
 describe('workbook status', () => {
-	it('labels each session status', () => {
-		expect(statusLabel('open')).toEqual({ tone: 'success', label: 'Live' });
-		expect(statusLabel('reconnecting').tone).toBe('warning');
-		expect(statusLabel('revoked').tone).toBe('danger');
+	it('maps each session status to a connection state', () => {
+		expect(connectionState('open')).toBe('live');
+		expect(connectionState('connecting')).toBe('connecting');
+		expect(connectionState('reconnecting')).toBe('offline');
+		expect(connectionState('revoked')).toBe('stopped');
 	});
 
 	it('explains known and unknown refusals', () => {

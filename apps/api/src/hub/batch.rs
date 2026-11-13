@@ -141,6 +141,10 @@ fn apply(model: &mut engine::Model, changes: &[Change]) -> Result<(), Error> {
                 engine::set_inputs(model, &std::mem::take(&mut cells))?;
                 engine::new_sheet(model, name.as_deref())?;
             }
+            Change::Edit(edit) => {
+                engine::set_inputs(model, &std::mem::take(&mut cells))?;
+                engine::apply_edit(model, edit)?;
+            }
         }
     }
     engine::set_inputs(model, &cells)

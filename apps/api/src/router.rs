@@ -7,7 +7,7 @@ use tronc::http;
 
 use crate::mcp::Mcp;
 use crate::state::AppState;
-use crate::{auth, modules, reference, version};
+use crate::{auth, modules, reference, security, version};
 
 /// What the router needs besides the state.
 #[derive(Clone, Default)]
@@ -18,6 +18,8 @@ pub struct Options {
     pub client_dir: PathBuf,
     /// `/mcp`, when `MCP_RESOURCE` is set.
     pub mcp: Option<Mcp>,
+    /// Production: the client may not be framed from localhost.
+    pub production: bool,
 }
 
 /// The `/api` routes: porte's, the nudges, then the modules. Unknown paths answer a JSON 404.
@@ -48,10 +50,7 @@ pub fn build_router(state: AppState, options: Options) -> Result<Router, String>
         None => app,
     };
     let app = match tronc::spa::available(&options.client_dir) {
-        true => app.fallback_service(tronc::spa::handler(tronc::spa::Config {
-            dir: options.client_dir,
-            ..Default::default()
-        })),
+        true => app.fallback_service(security::spa(options.client_dir, options.production)?),
         false => app.fallback(http::not_found),
     };
     Ok(app.layer(http::layers(options.http)?))

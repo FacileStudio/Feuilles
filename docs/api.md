@@ -185,13 +185,28 @@ HTTP, stateless (spec 2026-07-28); GET and DELETE answer 405. Tokens come from R
 audience `MCP_RESOURCE` and scopes `feuilles.read`, `feuilles.write` (write implies read). The
 metadata is at `GET /.well-known/oauth-protected-resource/mcp`. Never plan-gated.
 
-| Tool | Scope | Input | Output |
-|---|---|---|---|
-| `feuilles_list_workbooks` | read | `{"space_id"?}` | `{"workbooks":[Workbook]}` |
-| `feuilles_get_workbook` | read | `{"workbook_id"}` | `Workbook` with sheets and used ranges |
-| `feuilles_read_range` | read | `{"workbook_id","sheet"?,"range","cursor"?}` | `{"sheet","range","rows":[[Cell]],"next_cursor"?}`, pages under about 25k tokens |
-| `feuilles_write_cells` | write | `{"workbook_id","writes":[{"sheet","row","column","input"}]}` | `{"seq","sheets"}` |
-| `feuilles_create_workbook` | write | `{"title","space_id"?}` | `Workbook` |
-| `feuilles_add_sheet` | write | `{"workbook_id","name"?}` | `{"seq","sheets"}` |
+A `sheet` is its 0-based index or its tab name (any case). `Hints` are the annotations: `R` read
+only, `D` destructive, `I` idempotent; no tool is open-world.
 
-The access rules above apply to every tool. There is no delete tool.
+| Tool | Scope | Hints | Input | Output |
+|---|---|---|---|---|
+| `feuilles_list_workbooks` | read | R I | `{"space_id"?,"cursor"?,"limit"?}` | `{"workbooks":[Workbook],"next_cursor"?}` |
+| `feuilles_get_workbook` | read | R I | `{"workbook_id"}` | `Workbook` with sheets and used ranges |
+| `feuilles_read_range` | read | R I | `{"workbook_id","sheet"?,"range","cursor"?}` | `{"sheet","range","rows":[[Cell]],"next_cursor"?,"hint"?}` |
+| `feuilles_write_cells` | write | D I | `{"workbook_id","writes":[{"sheet","row","column","input"}]}` | `{"seq","sheets"}` |
+| `feuilles_create_workbook` | write | | `{"title","space_id"?}` | `Workbook` |
+| `feuilles_add_sheet` | write | | `{"workbook_id","name"?}` | `{"seq","sheets"}` |
+| `feuilles_update_workbook` | write | D I | `{"workbook_id","title"?,"space_id"?}` | `Workbook` |
+| `feuilles_delete_workbook` | write | D I | `{"workbook_id"}` | `Workbook`, now in the trash |
+| `feuilles_update_sheet` | write | I | `{"workbook_id","sheet","name"?,"position"?}` | `{"seq","sheets"}` |
+| `feuilles_delete_sheet` | write | D | `{"workbook_id","sheet"}` | `{"seq","sheets"}` |
+| `feuilles_insert_rows`, `feuilles_insert_columns` | write | | `{"workbook_id","sheet","at","count"?}` | `{"seq","sheets"}` |
+| `feuilles_delete_rows`, `feuilles_delete_columns` | write | D | `{"workbook_id","sheet","at","count"?}` | `{"seq","sheets"}` |
+| `feuilles_clear_range` | write | D I | `{"workbook_id","sheet","range"}` | `{"seq","sheets"}` |
+
+The access rules above apply to every tool: moving a workbook (`space_id`, `""` for personal) and
+deleting it need the manager role, and moving into a space needs membership there. Deleting a
+workbook moves it to the trash, like `DELETE /workbooks/{id}`. Every sheet, row, column and clear
+tool is one batch through the room as client 0, so open editors see it at once. `read_range` leaves
+out rows and columns past the sheet's used range, pages under about 25k tokens, and says in `hint`
+how to read the rest. `count` is 1 to 10000; a clear covers at most 1,000,000 cells of data.

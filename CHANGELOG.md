@@ -4,6 +4,23 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+### Added
+
+- MCP tools to rename, move and trash workbooks, rename, reorder and delete sheets, insert and
+  delete rows and columns, and clear ranges, all live through the workbook's room
+- Sheets in MCP tools by index or tab name; a missing sheet's error lists the sheets there are
+- `feuilles_list_workbooks` pages with `cursor` and `limit`; `feuilles_read_range` stops at the
+  sheet's data and answers a `hint` on how to read the rest
+- Embed mode: `/w/<id>?embed=1` hides the sidebar and the workbook header except presence, the
+  connection state and an "Open in Feuilles" link. The client's pages may be framed by
+  `https://docs.facile.studio` (and `http://localhost:*` outside production)
+
+### Changed
+
+- Each MCP tool declares its own annotations: `write_cells`, `clear_range`, `update_workbook` and
+  `delete_workbook` are destructive and idempotent; the delete tools for sheets, rows and columns
+  are destructive
+
 ## [0.8.3] - 2026-11-13
 
 ### Changed

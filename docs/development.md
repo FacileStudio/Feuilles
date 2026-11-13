@@ -93,6 +93,7 @@ dev machine. Install it elsewhere with `cd apps/client && bunx playwright-core i
 | `tests/live_access.rs` | Idempotent resend, 1008 refusals, eviction, 1011, the Origin check |
 | `tests/durability.rs` | Kills a real `api` process during a burst; every acknowledged batch survives |
 | `tests/mcp.rs` | tronc's MCP conformance kit, scopes, live writes, paging |
+| `tests/mcp_crud.rs` | Tool annotations, workbook, sheet, row and column tools, clamped reads |
 | `tests/reference.rs`, `tests/upgrade.rs` | The `/docs` drift test, engine export and verify |
 
 Each test in `directory_safety.rs` owns its own schema (`common::state_in`), because the

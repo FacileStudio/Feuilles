@@ -71,7 +71,8 @@ async fn app(config: &Config, state: AppState) -> Result<axum::Router, String> {
     let mut http = tronc::http::Config::from_core(&config.core);
     http.security = security::config(&config.client_dir);
     let mcp = mcp(config, &state.kits).await.map_err(|e| format!("build the MCP verifier: {e}"))?;
-    router::build_router(state, Options { http, client_dir: config.client_dir.clone(), mcp })
+    let production = config.core.is_production();
+    router::build_router(state, Options { http, client_dir: config.client_dir.clone(), mcp, production })
 }
 
 async fn mcp(config: &Config, kits: &Kits) -> Result<Option<Mcp>, porte::ConfigError> {

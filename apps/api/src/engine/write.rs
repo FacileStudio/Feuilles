@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use tronc::Error;
 
+use super::sheets::{SheetRef, sheet_index, sheet_names};
 use super::{MAX_COLUMN, MAX_ROW, Model};
 
 /// One cell input to set.
@@ -21,10 +22,8 @@ pub struct CellWrite {
 /// a failure can still leave `model` half-written: drop it then. The batch is the next
 /// `flush_send_queue()`.
 pub fn set_inputs(model: &mut Model, writes: &[CellWrite]) -> Result<(), Error> {
-    let sheets = u32::try_from(model.get_model().workbook.worksheets.len()).unwrap_or(u32::MAX);
-    if let Some(bad) = writes.iter().find(|w| w.sheet >= sheets) {
-        return Err(Error::not_found(format!("sheet {} does not exist", bad.sheet)));
-    }
+    let names = sheet_names(model);
+    writes.iter().try_for_each(|w| sheet_index(&names, &SheetRef::Index(w.sheet)).map(drop))?;
     let outside = |w: &&CellWrite| !(1..=MAX_ROW).contains(&w.row) || !(1..=MAX_COLUMN).contains(&w.column);
     if let Some(bad) = writes.iter().find(outside) {
         return Err(Error::invalid(format!("row {} column {} is outside the sheet", bad.row, bad.column)));

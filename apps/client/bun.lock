@@ -5,7 +5,7 @@
     "": {
       "name": "feuilles-client",
       "dependencies": {
-        "@facile/muse": "github:FacileStudio/muse#v0.20.0",
+        "@facile/muse": "github:FacileStudio/muse#v0.21.1",
         "@ironcalc/wasm": "0.9.1",
       },
       "devDependencies": {
@@ -26,7 +26,7 @@
     },
   },
   "packages": {
-    "@facile/muse": ["@facile/muse@github:FacileStudio/muse#2c4f4ed", { "dependencies": { "gsap": "^3.13.0", "tailwind-merge": "^3.5.0" }, "peerDependencies": { "svelte": "^5.0.0", "tailwindcss": "^4.0.0" } }, "FacileStudio-muse-2c4f4ed", "sha512-iKayffvkHD92ltN0h4hAFvIiWz8+DGfKH7nJ/4zAsEywsS9HRLA3XYtgcjlsOT6ClIztB64T8caPKhUw2TVLSw=="],
+    "@facile/muse": ["@facile/muse@github:FacileStudio/muse#0c1df3e", { "dependencies": { "gsap": "^3.13.0", "tailwind-merge": "^3.5.0" }, "peerDependencies": { "svelte": "^5.0.0", "tailwindcss": "^4.0.0" } }, "FacileStudio-muse-0c1df3e", "sha512-zb00SKPxhK91rIYI9f8JbVDaI9iZO0VR8Uf5N4H+eTl6NrM2ntVq3hr4EzkM/yrWiyg7Mr42JUZOUvPMmlEvCg=="],
 
     "@ironcalc/wasm": ["@ironcalc/wasm@0.9.1", "", {}, "sha512-PYNQ9hhXhZddhrJsaqf3KEL2nE/hJbQtvPN6t+C3RxGDIu/bWAICpHf/p3wL/9uiffPCNYaCTyZ/Mj3UMQvT4A=="],
 

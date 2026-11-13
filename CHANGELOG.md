@@ -4,6 +4,21 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+### Changed
+
+- muse v0.21: every icon-only control shows a muse tooltip instead of a native `title`, after
+  300 ms on hover, at once along the toolbar and at once on keyboard focus. This covers the
+  formatting toolbar, the sheet tabs, the back link, the download menu and the workbook card menus
+- The workbook cards' and the trash rows' right-click menu is the muse menu: Up and Down move and
+  scroll the active entry into view, Home and End jump to the ends, disabled entries are skipped
+  and Escape hands focus back to the card. The sheet's right-click menu hands focus back to the
+  grid
+- Every menu entry has an icon: number formats, rows and columns, and the sheet tab menu
+
+### Fixed
+
+- Trash rows no longer show "0 sheets"
+
 ## [0.9.2] - 2026-11-13
 
 ### Added

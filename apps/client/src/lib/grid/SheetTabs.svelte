@@ -33,17 +33,17 @@
 	function items(index: number, name: string): MenuEntry[] {
 		const last = sheets.list.length - 1;
 		return [
-			{ label: 'Rename', disabled: off, onselect: () => startRename(index, name) },
-			{ label: 'Move left', disabled: off || index === 0, onselect: () => commands.sheet(index, { moveTo: index - 1 }) },
-			{ label: 'Move right', disabled: off || index >= last, onselect: () => commands.sheet(index, { moveTo: index + 1 }) },
+			{ label: 'Rename', icon: icons.edit, disabled: off, onselect: () => startRename(index, name) },
+			{ label: 'Move left', icon: icons.insertLeft, disabled: off || index === 0, onselect: () => commands.sheet(index, { moveTo: index - 1 }) },
+			{ label: 'Move right', icon: icons.insertRight, disabled: off || index >= last, onselect: () => commands.sheet(index, { moveTo: index + 1 }) },
 			{ separator: true },
-			{ label: 'Delete', tone: 'danger', disabled: off || last === 0, onselect: () => commands.sheet(index, { remove: true }) }
+			{ label: 'Delete', icon: icons.remove, tone: 'danger', disabled: off || last === 0, onselect: () => commands.sheet(index, { remove: true }) }
 		];
 	}
 </script>
 
 <div class="flex h-11 shrink-0 items-center gap-1 overflow-x-auto bg-fc-component px-2" role="tablist" aria-label="Sheets">
-	<IconButton variant="ghost" aria-label="Add a sheet" title="Add a sheet" disabled={off} onclick={() => commands.addSheet()}>
+	<IconButton variant="ghost" aria-label="Add a sheet" disabled={off} onclick={() => commands.addSheet()}>
 		<Icon icon={icons.plus} />
 	</IconButton>
 	{#each sheets.list as sheet (sheet.sheet_id)}
@@ -70,7 +70,7 @@
 					{sheet.name}
 				</button>
 				{#if active}
-					<Menu label={`Sheet ${sheet.name}`} items={items(sheet.index, sheet.name)} class="[&>button]:h-8 [&>button]:min-h-0 [&>button]:bg-transparent [&>button]:px-1">
+					<Menu label={`Sheet ${sheet.name}`} items={items(sheet.index, sheet.name)} class="[&>span>button]:h-8 [&>span>button]:min-h-0 [&>span>button]:bg-transparent [&>span>button]:px-1">
 						{#snippet trigger()}<Icon icon={icons.chevronDown} size={14} />{/snippet}
 					</Menu>
 				{/if}

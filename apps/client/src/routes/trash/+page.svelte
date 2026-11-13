@@ -10,7 +10,16 @@
 	const list = new WorkbookList(true);
 	let doomed = $state<Workbook | null>(null);
 	let confirmOpen = $state(false);
-	let contextMenu = $state<{ x: number; y: number; workbook: Workbook } | null>(null);
+	let menuTarget = $state<Workbook | null>(null);
+	let menuReturn: HTMLElement | null = null;
+	let contextMenu: ContextMenu;
+
+	function openMenu(event: MouseEvent, workbook: Workbook) {
+		event.preventDefault();
+		menuTarget = workbook;
+		menuReturn = (event.currentTarget as HTMLElement).querySelector('a, [role="button"], button');
+		void contextMenu.open(event.clientX, event.clientY);
+	}
 
 	$effect(() => {
 		if (spaces.loaded) void list.load(spaces.currentId);
@@ -45,10 +54,7 @@
 			<WorkbookRow
 				{workbook}
 				actions={actions(workbook)}
-				oncontextmenu={(e) => {
-					e.preventDefault();
-					contextMenu = { x: e.clientX, y: e.clientY, workbook };
-				}}
+				oncontextmenu={(event) => openMenu(event, workbook)}
 			/>
 		{/each}
 	</ul>
@@ -64,11 +70,4 @@
 	onCancel={() => (confirmOpen = false)}
 />
 
-{#if contextMenu}
-	<ContextMenu
-		x={contextMenu.x}
-		y={contextMenu.y}
-		items={actions(contextMenu.workbook)}
-		onclose={() => (contextMenu = null)}
-	/>
-{/if}
+<ContextMenu bind:this={contextMenu} label="Workbook actions" items={menuTarget ? actions(menuTarget) : []} returnFocus={() => menuReturn} />

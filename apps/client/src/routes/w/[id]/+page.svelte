@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { Alert, Badge, Button, ConnectionHint, EmptyState, Icon, Menu, Presence, Spinner, toast } from '@facile/muse';
+	import { Alert, Badge, Button, ConnectionHint, EmptyState, Icon, Menu, Presence, Spinner, Tooltip, toast } from '@facile/muse';
 	import { ApiError, backend, exportUrl, signInUrl, socketPath, type Workbook } from '$lib/backend';
 	import { claimOrigin, type OriginClaim } from '$lib/engine/origin';
 	import { Role } from '$lib/engine/protocol';
@@ -110,7 +110,9 @@
 		{#if embed}
 			<span class="min-w-0 truncate text-fc-sm font-semibold text-fc-fg">{workbook?.title ?? ''}</span>
 		{:else}
-			<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/"><span class="max-sm:sr-only">Workbooks</span></Button>
+			<Tooltip text="Back to workbooks" describe={false} class="contents">
+				<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/"><span class="max-sm:sr-only">Workbooks</span></Button>
+			</Tooltip>
 			<button
 				type="button"
 				class="min-w-0 truncate rounded-fc-sm px-2 py-1 text-left text-fc-lg font-semibold text-fc-fg hover:bg-fc-surface"
@@ -125,9 +127,11 @@
 			<Presence {peers} />
 			{#if session}<ConnectionHint state={connectionState(session.status)} />{/if}
 			{#if embed}
-				<Button variant="ghost" size="sm" icon={icons.external} href={fullUrl} target="_blank" rel="noopener">
-					Open in Feuilles
-				</Button>
+				<Tooltip text="Opens in a new tab" class="contents">
+					<Button variant="ghost" size="sm" icon={icons.external} href={fullUrl} target="_blank" rel="noopener">
+						Open in Feuilles
+					</Button>
+				</Tooltip>
 			{:else if workbook}
 				<Menu label="Download" items={downloads} align="end">
 					{#snippet trigger()}<Icon icon={icons.download} size={18} />{/snippet}

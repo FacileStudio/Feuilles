@@ -4,6 +4,8 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-11-13
+
 ### Changed
 
 - muse v0.21: every icon-only control shows a muse tooltip instead of a native `title`, after

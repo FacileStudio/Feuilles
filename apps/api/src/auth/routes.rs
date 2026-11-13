@@ -27,6 +27,8 @@ pub struct Me {
 pub struct SessionAnswer {
     /// The account, or null.
     pub user: Option<Me>,
+    /// The origin the client frames the Bulle sidebar from, `BULLE_URL`.
+    pub bulle_url: String,
 }
 
 /// `GET /auth/me` behind the session, `GET /auth/session` open to anyone.
@@ -61,5 +63,5 @@ async fn session(State(state): State<AppState>, identity: Option<Identity>) -> J
         Some(identity) => account(&state, &identity).await.ok(),
         None => None,
     };
-    Json(SessionAnswer { user })
+    Json(SessionAnswer { user, bulle_url: state.bulle.clone() })
 }

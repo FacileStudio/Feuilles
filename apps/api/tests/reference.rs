@@ -25,6 +25,7 @@ async fn every_mounted_route_is_documented() {
                 resource: "http://127.0.0.1:4000/mcp".into(),
                 issuer: common::ISSUER.into(),
                 verifier: std::sync::Arc::new(Never),
+                key: b"test-key".to_vec(),
             }),
             ..Default::default()
         };

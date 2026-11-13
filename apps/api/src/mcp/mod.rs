@@ -1,7 +1,10 @@
 //! `/mcp`: curated workbook, sheet and cell tools on `tronc::mcp`, with tokens checked by
-//! `porte::mcpauth`. Free on every plan.
+//! `porte::mcpauth`. Free on every plan. The tools that remove cells for good ask the person
+//! first.
 
+mod confirm;
 mod lines;
+mod planned;
 mod read;
 mod sheets;
 mod workbooks;
@@ -20,12 +23,12 @@ use crate::modules::workbooks::service::{Access, require};
 use crate::modules::workbooks::store::Row;
 use crate::state::AppState;
 
+pub use confirm::{KINDS, confirmations};
+
 /// A read: changes nothing, safe to repeat.
 const READ: Annotations = Annotations { read_only: true, destructive: false, idempotent: true, open_world: false };
 /// Adds something new each call and overwrites nothing.
 const ADD: Annotations = Annotations { read_only: false, destructive: false, idempotent: false, open_world: false };
-/// Rearranges without losing anything, and the same call again changes nothing more.
-const ARRANGE: Annotations = Annotations { read_only: false, destructive: false, idempotent: true, open_world: false };
 /// Overwrites or removes, and the same call again changes nothing more.
 const OVERWRITE: Annotations = Annotations { read_only: false, destructive: true, idempotent: true, open_world: false };
 /// Removes or shifts content, and the same call again does it again.
@@ -40,6 +43,13 @@ pub struct Mcp {
     pub issuer: String,
     /// Checks bearer tokens.
     pub verifier: Arc<dyn tronc::mcp::Verifier>,
+    /// Signs the confirmation questions. Secret, and stable across restarts.
+    pub key: Vec<u8>,
+}
+
+/// The confirmation key derived from `secret`, an app secret such as `PORTE_TOKEN_KEY`.
+pub fn state_key(secret: &str) -> Vec<u8> {
+    format!("feuilles-mcp-state:{secret}").into_bytes()
 }
 
 /// Mounts `/mcp` and its protected-resource metadata on the root router.

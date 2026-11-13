@@ -24,6 +24,22 @@ export type Workbook = {
 /** The signed-in person, from `GET /api/auth/session`. */
 export type SessionUser = { id: number; email: string; name: string; avatar_url?: string };
 
+/** `GET /api/auth/session`: the account, or null, and the origin of the Bulle sidebar. */
+export type SessionAnswer = { user: SessionUser | null; bulle_url?: string };
+
+/** One agent action waiting for the person, from `GET /api/mcp/actions`. */
+export interface PendingAction {
+	id: string;
+	user_id: string;
+	kind: string;
+	target: string;
+	summary: string;
+	client_id: string;
+	created_at: string;
+	expires_at: string;
+	state: 'ready' | 'changed' | 'missing';
+}
+
 /** `GET /version`. `engine` is the server's `ironcalc` version (plan 7.7). */
 export type ServerVersion = { version: string; engine?: string };
 

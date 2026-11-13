@@ -5,6 +5,7 @@ use std::time::{Duration, SystemTime};
 
 use api::mcp::Mcp;
 use serde_json::Value;
+use tronc::mcp::rmcp::model::ElicitationAction;
 use tronc::mcp::{TokenInfo, Verifier, VerifyError, VerifyFuture};
 use tronc::mcptest::{self, ClientOptions};
 
@@ -28,16 +29,20 @@ impl Verifier for DevTokens {
     }
 }
 
-pub async fn mounted(state: &api::state::AppState) -> SocketAddr {
-    serve_with(state.clone(), |addr| api::router::Options {
+pub fn options(addr: SocketAddr) -> api::router::Options {
+    api::router::Options {
         mcp: Some(Mcp {
             resource: format!("http://{addr}/mcp"),
             issuer: super::ISSUER.into(),
             verifier: Arc::new(DevTokens),
+            key: b"test-key".to_vec(),
         }),
         ..Default::default()
-    })
-    .await
+    }
+}
+
+pub async fn mounted(state: &api::state::AppState) -> SocketAddr {
+    serve_with(state.clone(), options).await
 }
 
 pub fn args(value: Value) -> tronc::mcp::rmcp::model::JsonObject {
@@ -46,4 +51,10 @@ pub fn args(value: Value) -> tronc::mcp::rmcp::model::JsonObject {
 
 pub async fn token(addr: SocketAddr, user: i64, scopes: &str) -> mcptest::Client {
     mcptest::connect(&format!("http://{addr}/mcp"), &format!("{user}|{scopes}"), ClientOptions::default()).await
+}
+
+pub async fn agreeing(addr: SocketAddr, user: i64) -> mcptest::Client {
+    let accept = mcptest::answering(ElicitationAction::Accept, Arc::default());
+    let options = ClientOptions { elicit: Some(accept), version: None };
+    mcptest::connect(&format!("http://{addr}/mcp"), &format!("{user}|feuilles.read,feuilles.write"), options).await
 }

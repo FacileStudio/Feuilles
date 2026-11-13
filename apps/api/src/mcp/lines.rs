@@ -2,6 +2,8 @@ use serde::Deserialize;
 use tronc::mcp::{self, Answer, Call, Tool, ToolError};
 use uuid::Uuid;
 
+use super::confirm::{Confirmed, ask};
+use super::planned::{Op, Planned};
 use super::write::{WriteOutput, change};
 use super::{ADD, REMOVE, spec, with};
 use crate::engine::{Axis, Edit, EditKind, SheetRef};
@@ -25,7 +27,7 @@ pub struct LinesInput {
 /// The tools that insert and delete rows and columns.
 pub fn tools(state: &AppState) -> Vec<Tool> {
     let insert = "Formulas follow the cells they point to.";
-    let delete = "Call only when the person asks to remove them with their cells; formulas pointing there break.";
+    let delete = "Call only when the person asks to remove them with their cells; formulas pointing there break. The person confirms first.";
     vec![
         mcp::tool(
             spec(
@@ -66,9 +68,10 @@ async fn insert_rows(state: AppState, call: Call, input: LinesInput) -> Result<A
     Ok(lines(&state, &call, input, kind).await?.into())
 }
 
-async fn delete_rows(state: AppState, call: Call, input: LinesInput) -> Result<Answer<WriteOutput>, ToolError> {
-    let kind = EditKind::Delete { axis: Axis::Rows, at: input.at, count: input.count.unwrap_or(1) };
-    Ok(lines(&state, &call, input, kind).await?.into())
+async fn delete_rows(state: AppState, call: Call, input: LinesInput) -> Result<Answer<Confirmed>, ToolError> {
+    let op = Op::DeleteRows { at: input.at, count: input.count.unwrap_or(1) };
+    let planned = Planned { workbook_id: input.workbook_id, sheet: input.sheet, op };
+    ask(&state, &call, "feuilles_delete_rows", planned).await
 }
 
 async fn insert_columns(state: AppState, call: Call, input: LinesInput) -> Result<Answer<WriteOutput>, ToolError> {
@@ -76,7 +79,8 @@ async fn insert_columns(state: AppState, call: Call, input: LinesInput) -> Resul
     Ok(lines(&state, &call, input, kind).await?.into())
 }
 
-async fn delete_columns(state: AppState, call: Call, input: LinesInput) -> Result<Answer<WriteOutput>, ToolError> {
-    let kind = EditKind::Delete { axis: Axis::Columns, at: input.at, count: input.count.unwrap_or(1) };
-    Ok(lines(&state, &call, input, kind).await?.into())
+async fn delete_columns(state: AppState, call: Call, input: LinesInput) -> Result<Answer<Confirmed>, ToolError> {
+    let op = Op::DeleteColumns { at: input.at, count: input.count.unwrap_or(1) };
+    let planned = Planned { workbook_id: input.workbook_id, sheet: input.sheet, op };
+    ask(&state, &call, "feuilles_delete_columns", planned).await
 }

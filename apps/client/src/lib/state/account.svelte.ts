@@ -1,8 +1,13 @@
 import { backend, signInUrl, type SessionUser } from '$lib/backend';
+import { DEFAULT_BULLE } from '$lib/bulle';
 
-/** The signed-in person. `loaded` turns true once `/api/auth/session` has answered. */
-export const account = $state<{ user: SessionUser | null; loaded: boolean; error: string | null }>({
+/**
+ * The signed-in person and the origin of their Bulle sidebar, from the API's `BULLE_URL`.
+ * `loaded` turns true once `/api/auth/session` has answered.
+ */
+export const account = $state<{ user: SessionUser | null; bulle: string; loaded: boolean; error: string | null }>({
 	user: null,
+	bulle: DEFAULT_BULLE,
 	loaded: false,
 	error: null
 });
@@ -10,7 +15,9 @@ export const account = $state<{ user: SessionUser | null; loaded: boolean; error
 /** Loads the session once per page load, then refreshes the Registre profile behind it. */
 export async function loadAccount(): Promise<void> {
 	try {
-		account.user = await backend.session();
+		const answer = await backend.session();
+		account.user = answer.user;
+		account.bulle = answer.bulle_url || DEFAULT_BULLE;
 		account.error = null;
 	} catch (error) {
 		account.error = error instanceof Error ? error.message : String(error);
@@ -23,7 +30,9 @@ export async function loadAccount(): Promise<void> {
 /** Asks the API to re-read the Registre profile, and reloads the session when it changed. */
 export async function refreshProfile(): Promise<void> {
 	const synced = await backend.syncProfile().catch(() => false);
-	if (synced) account.user = (await backend.session().catch(() => account.user)) ?? account.user;
+	if (!synced) return;
+	const answer = await backend.session().catch(() => null);
+	account.user = answer?.user ?? account.user;
 }
 
 /** Signs out, then goes back to the sign-in screen. */

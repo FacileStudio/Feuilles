@@ -1,10 +1,10 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tronc::Error;
 
 use super::Model;
 
 /// A sheet named by its 0-based index or by its tab name.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(untagged)]
 pub enum SheetRef {
     /// The position, from 0.

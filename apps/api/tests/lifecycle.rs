@@ -30,6 +30,16 @@ async fn erasing_a_person_takes_their_personal_workbooks_and_leaves_space_ones()
     let shared = space(&state, &[(&gone, "owner"), (&other, "member")]).await;
     let personal = workbook(&state.pool, None, gone.user_id).await;
     let in_space = workbook(&state.pool, Some(&shared), gone.user_id).await;
+    for user in [gone.user_id, other.user_id] {
+        sqlx::query(
+            "INSERT INTO mcp_actions (id, user_id, kind, target, digest, expires_at) VALUES ($1, $2, 'k', '{}', '', now())",
+        )
+        .bind(common::unique("action"))
+        .bind(user.to_string())
+        .execute(&state.pool)
+        .await
+        .expect("action");
+    }
     let erased = erase_person(&state.pool, ISSUER, &gone.subject).await.expect("erase");
     assert_eq!(erased, [personal]);
     let pool = &state.pool;
@@ -41,6 +51,8 @@ async fn erasing_a_person_takes_their_personal_workbooks_and_leaves_space_ones()
     assert!(!exists(pool, "SELECT EXISTS (SELECT 1 FROM space_members WHERE subject = $1)", &gone.subject).await);
     assert!(exists(pool, "SELECT EXISTS (SELECT 1 FROM space_members WHERE subject = $1)", &other.subject).await);
     assert!(!exists(pool, "SELECT EXISTS (SELECT 1 FROM porte_users WHERE id = $1::bigint)", gone.user_id).await);
+    assert!(!exists(pool, "SELECT EXISTS (SELECT 1 FROM mcp_actions WHERE user_id = $1)", gone.user_id).await);
+    assert!(exists(pool, "SELECT EXISTS (SELECT 1 FROM mcp_actions WHERE user_id = $1)", other.user_id).await);
 }
 
 #[tokio::test]

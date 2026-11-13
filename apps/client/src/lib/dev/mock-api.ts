@@ -64,7 +64,7 @@ async function workbookRoute(request: Request, id: string, action: string | unde
 async function route(request: Request, url: URL): Promise<Response> {
 	const path = url.pathname;
 	if (path === '/version') return json({ version: 'mock', engine: '0.9.1' });
-	if (path === '/api/auth/session') return json({ user: { id: 1, email: 'mock@facile.studio', name: 'Mock person' } });
+	if (path === '/api/auth/session') return json({ user: { id: 1, email: 'mock@facile.studio', name: 'Mock person' }, bulle_url: 'https://bulle.facile.studio' });
 	if (path === '/api/spaces') return json({ spaces: [] });
 	if (path === '/api/workbooks' && request.method === 'GET') {
 		const trashed = url.searchParams.get('trashed') === 'true';

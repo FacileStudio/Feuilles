@@ -49,7 +49,8 @@ pub async fn run(config: Config, args: Vec<String>) -> ExitCode {
         Ok(kits) => kits,
         Err(error) => return fail("build the auth kits", &error),
     };
-    let state = AppState::new(pool, config.porte.issuer.clone(), kits, hub.clone());
+    let mut state = AppState::new(pool, config.porte.issuer.clone(), kits, hub.clone());
+    state.bulle = config.bulle.clone();
     let shutdown = CancellationToken::new();
     spawn_tasks(&state, &config, &shutdown);
     let app = match app(&config, state).await {
@@ -70,7 +71,7 @@ async fn operator(args: &[String], pool: &PgPool) -> Option<ExitCode> {
 
 async fn app(config: &Config, state: AppState) -> Result<axum::Router, String> {
     let mut http = tronc::http::Config::from_core(&config.core);
-    http.security = security::config(&config.client_dir);
+    http.security = security::config(&config.client_dir, &config.bulle);
     let mcp = mcp(config, &state.kits).await.map_err(|e| format!("build the MCP verifier: {e}"))?;
     let production = config.core.is_production();
     router::build_router(state, Options { http, client_dir: config.client_dir.clone(), mcp, production })
@@ -82,7 +83,7 @@ async fn mcp(config: &Config, kits: &Kits) -> Result<Option<Mcp>, porte::ConfigE
     }
     let verifier = porte_verifier(&config.porte, kits, &config.mcp_resource).await?;
     let (resource, issuer) = (config.mcp_resource.clone(), config.porte.issuer.clone());
-    Ok(Some(Mcp { resource, issuer, verifier }))
+    Ok(Some(Mcp { resource, issuer, verifier, key: crate::mcp::state_key(&config.token_key) }))
 }
 
 fn spawn_tasks(state: &AppState, config: &Config, shutdown: &CancellationToken) {

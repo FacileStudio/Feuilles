@@ -61,7 +61,7 @@ left (`workbooks.sheet_count`), or `null` for an older workbook the boot backfil
 | `POST /api/auth/backchannel-logout` | form `logout_token`, from Registre |
 | `POST /api/auth/logout` | `{"logged_out":true}`, clears the cookie |
 | `GET /api/auth/me` | `{"id","email","name","avatar_url"?}`, 401 without a session |
-| `GET /api/auth/session` | Always 200: `{"user":{"id","email","name","avatar_url"?}}` or `{"user":null}` |
+| `GET /api/auth/session` | Always 200: `{"user":{"id","email","name","avatar_url"?},"bulle_url"}`, `user` null without a session. `bulle_url` is the origin the client frames the Bulle sidebar from |
 | `POST /api/registre/sync` | 202. Registre's nudge; wakes the directory sync |
 | `POST /api/registre/deletions` | 202. Registre's signed account-deletion push |
 
@@ -200,11 +200,11 @@ only, `D` destructive, `I` idempotent; no tool is open-world.
 | `feuilles_add_sheet` | write | | `{"workbook_id","name"?}` | `{"seq","sheets"}` |
 | `feuilles_update_workbook` | write | D I | `{"workbook_id","title"?,"space_id"?}` | `Workbook` |
 | `feuilles_delete_workbook` | write | D I | `{"workbook_id"}` | `Workbook`, now in the trash |
-| `feuilles_update_sheet` | write | I | `{"workbook_id","sheet","name"?,"position"?}` | `{"seq","sheets"}` |
-| `feuilles_delete_sheet` | write | D | `{"workbook_id","sheet"}` | `{"seq","sheets"}` |
+| `feuilles_update_sheet` | write | D I | `{"workbook_id","sheet","name"?,"position"?}` | `{"seq","sheets"}` |
+| `feuilles_delete_sheet` | write, confirmed | D | `{"workbook_id","sheet"}` | `Confirmed` |
 | `feuilles_insert_rows`, `feuilles_insert_columns` | write | | `{"workbook_id","sheet","at","count"?}` | `{"seq","sheets"}` |
-| `feuilles_delete_rows`, `feuilles_delete_columns` | write | D | `{"workbook_id","sheet","at","count"?}` | `{"seq","sheets"}` |
-| `feuilles_clear_range` | write | D I | `{"workbook_id","sheet","range"}` | `{"seq","sheets"}` |
+| `feuilles_delete_rows`, `feuilles_delete_columns` | write, confirmed | D | `{"workbook_id","sheet","at","count"?}` | `Confirmed` |
+| `feuilles_clear_range` | write, confirmed | D I | `{"workbook_id","sheet","range"}` | `Confirmed` |
 
 The access rules above apply to every tool: moving a workbook (`space_id`, `""` for personal) and
 deleting it need the manager role, and moving into a space needs membership there. Deleting a
@@ -212,3 +212,25 @@ workbook moves it to the trash, like `DELETE /workbooks/{id}`. Every sheet, row,
 tool is one batch through the room as client 0, so open editors see it at once. `read_range` leaves
 out rows and columns past the sheet's used range, pages under about 25k tokens, and says in `hint`
 how to read the rest. `count` is 1 to 10000; a clear covers at most 1,000,000 cells of data.
+
+Any tool that overwrites or removes data is `D`; only a tool whose repeat call changes nothing more
+is `I`.
+
+### Confirmations
+
+The four tools that remove cells for good ask the person first. They check the sheet, the span and
+the access, then ask: a client that can elicit gets `input_required` and runs the edit on the
+person's accept; any other client gets `Confirmed` = `{"status":"pending_confirmation",
+"confirm_url"}` and nothing runs. The link opens `/pending?action=<id>` in Feuilles. After a run,
+`Confirmed` is `{"status":"done","sheets"}`; after a decline, `{"status":"declined"}`. A pending
+action records the workbook's `seq`: any write in between closes it as changed. Actions live in
+`mcp_actions` for 7 days and are erased with the account.
+
+| Route | Answer |
+|---|---|
+| `GET /api/mcp/actions` | `[{"id","kind","target","summary","client_id","created_at","expires_at","state"}]`, `state` is `ready`, `changed` or `missing` |
+| `POST /api/mcp/actions/{id}/confirm` | `{"status":"done"}`; 404 when gone or not yours, 412 when the workbook changed |
+| `POST /api/mcp/actions/{id}/dismiss` | 204 |
+
+Only the person's own browser session (cookie plus `X-Facile-CSRF`) reaches these routes: a bearer
+token, an API session or a delegated agent gets 403. They answer 404 when MCP is off.

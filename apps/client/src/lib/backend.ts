@@ -1,5 +1,5 @@
 import { ApiError } from './api/error';
-import type { ServerVersion, SessionUser, Space, Workbook } from './api/types';
+import type { PendingAction, ServerVersion, SessionAnswer, Space, Workbook } from './api/types';
 
 export { ApiError } from './api/error';
 export type * from './api/types';
@@ -28,7 +28,7 @@ export function createBackend(fetcher: Fetch) {
 		call<T>(path, { method, headers: json, body: body === undefined ? undefined : JSON.stringify(body) });
 
 	return {
-		session: () => call<{ user: SessionUser | null }>('/api/auth/session').then((r) => r.user),
+		session: () => call<SessionAnswer>('/api/auth/session'),
 		logout: () => send<{ logged_out: boolean }>('POST', '/api/auth/logout'),
 		syncProfile: () => send<{ synced: boolean }>('POST', '/api/auth/sync-profile').then((r) => r.synced),
 		version: () => call<ServerVersion>('/version'),
@@ -42,7 +42,10 @@ export function createBackend(fetcher: Fetch) {
 		rename: (id: string, title: string) => send<Workbook>('PATCH', `/api/workbooks/${encodeURIComponent(id)}`, { title }),
 		trash: (id: string) => send<void>('DELETE', `/api/workbooks/${encodeURIComponent(id)}`),
 		restore: (id: string) => send<Workbook>('POST', `/api/workbooks/${encodeURIComponent(id)}/restore`),
-		destroy: (id: string) => send<void>('DELETE', `/api/workbooks/${encodeURIComponent(id)}/permanent`)
+		destroy: (id: string) => send<void>('DELETE', `/api/workbooks/${encodeURIComponent(id)}/permanent`),
+		actions: () => call<PendingAction[]>('/api/mcp/actions'),
+		confirmAction: (id: string) => send<{ status: string }>('POST', `/api/mcp/actions/${encodeURIComponent(id)}/confirm`),
+		dismissAction: (id: string) => send<void>('POST', `/api/mcp/actions/${encodeURIComponent(id)}/dismiss`)
 	};
 }
 

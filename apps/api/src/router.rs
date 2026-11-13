@@ -32,6 +32,7 @@ pub fn api(state: &AppState) -> Router<AppState> {
         .merge(modules::spaces::routes(sessions))
         .merge(modules::workbooks::routes(sessions))
         .merge(modules::live::routes(sessions))
+        .merge(modules::pending::routes(sessions))
         .route("/registre/sync", state.kits.syncer.nudge_route())
         .route("/registre/deletions", state.kits.deletions.route())
         .fallback(|| async { tronc::Error::not_found("no such route") })
@@ -39,7 +40,10 @@ pub fn api(state: &AppState) -> Router<AppState> {
 }
 
 /// The whole app: health, `/version`, `/api`, then the SPA.
-pub fn build_router(state: AppState, options: Options) -> Result<Router, String> {
+pub fn build_router(mut state: AppState, options: Options) -> Result<Router, String> {
+    if let Some(mcp) = &options.mcp {
+        state.confirmations = Some(crate::mcp::confirmations(&state, &mcp.resource, &mcp.key)?);
+    }
     let app = Router::new()
         .merge(health::routes(vec![Check::db(state.pool.clone())]))
         .route("/version", get(version::handler))

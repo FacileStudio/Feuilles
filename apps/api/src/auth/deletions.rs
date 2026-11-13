@@ -5,7 +5,7 @@ use uuid::Uuid;
 use super::spaces::{Evict, Eviction};
 
 /// Erases what Feuilles holds about a person Registre deleted: their personal workbooks, their
-/// space memberships and their account. Space workbooks stay, with no owner. Their sockets close
+/// pending agent actions, their space memberships and their account. Space workbooks stay, with no owner. Their sockets close
 /// in every room.
 pub struct AppData {
     pool: PgPool,
@@ -35,6 +35,7 @@ pub async fn erase_person(pool: &PgPool, provider: &str, subject: &str) -> Resul
             .bind(user)
             .fetch_all(&mut *tx)
             .await?;
+        sqlx::query("DELETE FROM mcp_actions WHERE user_id = $1").bind(user.to_string()).execute(&mut *tx).await?;
         sqlx::query("DELETE FROM porte_users WHERE id = $1").bind(user).execute(&mut *tx).await?;
     }
     sqlx::query("DELETE FROM space_members WHERE subject = $1").bind(subject).execute(&mut *tx).await?;

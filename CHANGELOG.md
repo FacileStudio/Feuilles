@@ -4,6 +4,30 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+### Added
+
+- The Bulle sidebar on a workbook: the header button opens the person's assistant beside the
+  grid, framed from `BULLE_URL` (default `https://bulle.facile.studio`), and remembers per person
+  whether it was open. The CSP allows that origin in `frame-src`, and `GET /api/auth/session`
+  answers it as `bulle_url`
+- `/pending`: the page where a person confirms or declines an agent's request, over
+  `GET /api/mcp/actions` and `POST /api/mcp/actions/{id}/confirm|dismiss`. Only their own
+  browser session reaches it
+
+### Changed
+
+- MCP: `feuilles_delete_sheet`, `feuilles_delete_rows`, `feuilles_delete_columns` and
+  `feuilles_clear_range` ask the person before they run, in the client when it can ask, or
+  through a `confirm_url` to `/pending`. An unknown sheet, the last sheet or a span out of bounds
+  is still refused at once
+- MCP: `feuilles_update_sheet` is marked destructive, like `feuilles_update_workbook`: a rename
+  overwrites the tab name
+- `MCP_RESOURCE` needs `PORTE_TOKEN_KEY`, which keys the confirmations
+
+### Fixed
+
+- Erasing an account also erases its pending agent actions
+
 ## [0.10.0] - 2026-11-14
 
 ### Added

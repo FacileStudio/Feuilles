@@ -64,6 +64,7 @@ services:
       OIDC_SUCCESS_URL: ${OIDC_SUCCESS_URL:-}
       OIDC_CLI_AUDIENCE: ${OIDC_CLI_AUDIENCE:-}
       MCP_RESOURCE: ${MCP_RESOURCE:-}
+      BULLE_URL: ${BULLE_URL:-}
       APP_ENV: ${APP_ENV:-production}
     healthcheck:
       test: ["CMD", "/api", "healthcheck"]

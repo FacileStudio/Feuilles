@@ -45,28 +45,46 @@ pub struct Edit {
     pub kind: EditKind,
 }
 
+/// Resolves the sheet `edit` names among `names` and refuses what [`apply_edit`] would refuse,
+/// without a model: an unknown sheet, the last sheet, an empty name, a position or a span out of
+/// bounds.
+pub fn check_edit(names: &[String], edit: &Edit) -> Result<u32, Error> {
+    let sheet = sheet_index(names, &edit.sheet)?;
+    match &edit.kind {
+        EditKind::Rename(name) => check_name(name).map(drop),
+        EditKind::Move(to) => check_position(*to, names.len()).map(drop),
+        EditKind::DeleteSheet if names.len() == 1 => {
+            Err(Error::failed("a workbook keeps at least one sheet; add another sheet first"))
+        }
+        EditKind::Insert { axis, at, count } | EditKind::Delete { axis, at, count } => {
+            lines(*at, *count, last(*axis)).map(drop)
+        }
+        EditKind::DeleteSheet | EditKind::Clear(_) => Ok(()),
+    }?;
+    Ok(sheet)
+}
+
 /// Applies `edit`. A refused edit can leave `model` half-written: drop it then.
 pub fn apply_edit(model: &mut Model, edit: &Edit) -> Result<(), Error> {
-    let names = sheet_names(model);
-    let sheet = sheet_index(&names, &edit.sheet)?;
+    let sheet = check_edit(&sheet_names(model), edit)?;
     let done = match &edit.kind {
-        EditKind::Rename(name) => model.rename_sheet(sheet, &check_name(name)?),
-        EditKind::Move(to) => model.move_sheet(sheet, check_position(*to, names.len())?),
-        EditKind::DeleteSheet if names.len() == 1 => {
-            return Err(Error::failed("a workbook keeps at least one sheet; add another sheet first"));
-        }
+        EditKind::Rename(name) => model.rename_sheet(sheet, name.trim()),
+        EditKind::Move(to) => model.move_sheet(sheet, *to),
         EditKind::DeleteSheet => model.delete_sheet(sheet),
-        EditKind::Insert { axis: Axis::Rows, at, count } => model.insert_rows(sheet, *at, lines(*at, *count, MAX_ROW)?),
-        EditKind::Insert { axis: Axis::Columns, at, count } => {
-            model.insert_columns(sheet, *at, lines(*at, *count, MAX_COLUMN)?)
-        }
-        EditKind::Delete { axis: Axis::Rows, at, count } => model.delete_rows(sheet, *at, lines(*at, *count, MAX_ROW)?),
-        EditKind::Delete { axis: Axis::Columns, at, count } => {
-            model.delete_columns(sheet, *at, lines(*at, *count, MAX_COLUMN)?)
-        }
+        EditKind::Insert { axis: Axis::Rows, at, count } => model.insert_rows(sheet, *at, *count),
+        EditKind::Insert { axis: Axis::Columns, at, count } => model.insert_columns(sheet, *at, *count),
+        EditKind::Delete { axis: Axis::Rows, at, count } => model.delete_rows(sheet, *at, *count),
+        EditKind::Delete { axis: Axis::Columns, at, count } => model.delete_columns(sheet, *at, *count),
         EditKind::Clear(area) => return clear(model, sheet, *area),
     };
     done.map_err(Error::invalid)
+}
+
+fn last(axis: Axis) -> i32 {
+    match axis {
+        Axis::Rows => MAX_ROW,
+        Axis::Columns => MAX_COLUMN,
+    }
 }
 
 fn check_name(name: &str) -> Result<String, Error> {

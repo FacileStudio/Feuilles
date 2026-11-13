@@ -24,11 +24,12 @@ boot with a message naming it.
 | `OIDC_CLAIMS_SCOPE` | no | | Request and cache a roles claim |
 | `OIDC_APP_NAME`, `OIDC_LOGO_URL` | no | | Shown on the CLI code page |
 | `PORTE_TOKEN_KEY` | production | | Seals stored OIDC tokens at rest (porte `TokenSealer` spec) |
-| `MCP_RESOURCE` | no | | `https://feuilles.facile.studio/mcp`. Its presence mounts `/mcp`; needs `OIDC_ISSUER` |
+| `MCP_RESOURCE` | no | | `https://feuilles.facile.studio/mcp`. Its presence mounts `/mcp`; needs `OIDC_ISSUER` and `PORTE_TOKEN_KEY` |
+| `BULLE_URL` | no | `https://bulle.facile.studio` | The Bulle origin the client frames as its sidebar; the CSP's `frame-src` allows it |
 
-`SSO_ONLY` is read by porte but forced to true: local password routes are never mounted. No AI
-variables are read: v1 has no AI feature. `MCP_STATE_KEY` from the plan is not read, because no
-tool asks for a confirmation.
+`SSO_ONLY` is read by porte but forced to true: local password routes are never mounted. Feuilles
+calls no AI itself: the Bulle sidebar is Bulle's own page in a frame. `MCP_STATE_KEY` is not
+read: the key that signs MCP confirmation questions is derived from `PORTE_TOKEN_KEY`.
 
 Test-only: `TEST_DATABASE_URL` points the database tests at a scratch Postgres; each test binary
 migrates its own schema.

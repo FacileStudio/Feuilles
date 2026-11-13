@@ -67,9 +67,15 @@ describe('backend', () => {
 		await expect(client.trash('w1')).resolves.toBeUndefined();
 	});
 
-	it('unwraps the session user, null when signed out', async () => {
-		const { client } = fake(ok({ user: null }));
-		await expect(client.session()).resolves.toBeNull();
+	it('reads the session with the Bulle origin and answers agent actions with the CSRF header', async () => {
+		const { calls, client } = fake(ok({ user: null, bulle_url: 'https://bulle.test' }));
+		await expect(client.session()).resolves.toEqual({ user: null, bulle_url: 'https://bulle.test' });
+		await client.confirmAction('a/1');
+		await client.dismissAction('a1');
+		expect(calls.slice(1).map((call) => [call.init.method, call.input, header(call, 'X-Facile-CSRF')])).toEqual([
+			['POST', '/api/mcp/actions/a%2F1/confirm', '1'],
+			['POST', '/api/mcp/actions/a1/dismiss', '1']
+		]);
 	});
 
 	it('builds scope and export addresses', () => {

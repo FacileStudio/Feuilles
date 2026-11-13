@@ -4,6 +4,8 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-11-13
+
 ### Added
 
 - Workbook lists show "1 sheet" or "N sheets" on cards and trash rows again. The API stores

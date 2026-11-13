@@ -1,11 +1,10 @@
 <script lang="ts">
 	import type { Workbook } from '$lib/backend';
+	import { sheetLabel } from './format';
 
 	let { workbook }: { workbook: Workbook } = $props();
 
-	const sheetCount = $derived(
-		workbook.sheets.length === 1 ? '1 sheet' : `${workbook.sheets.length} sheets`
-	);
+	const sheetCount = $derived(sheetLabel(workbook));
 </script>
 
 <div
@@ -70,7 +69,7 @@
 		</div>
 	</div>
 
-	{#if workbook.sheets.length > 0}
+	{#if sheetCount}
 		<div class="flex items-center justify-end pt-1">
 			<span class="rounded-fc-xs bg-fc-page/50 px-1.5 py-0.5 text-fc-xs text-fc-fg-muted">
 				{sheetCount}

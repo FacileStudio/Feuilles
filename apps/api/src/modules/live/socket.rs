@@ -58,7 +58,8 @@ pub async fn run(mut socket: WebSocket, hub: Hub, workbook: Uuid, member: Member
     let Some(client_id) = enter(&mut socket, &hub, workbook, seat).await else {
         return;
     };
-    let (rate, mut ping) = (Rate::new(limits.pushes_per_second), tokio::time::interval(limits.ping));
+    let first_ping = tokio::time::Instant::now() + limits.ping;
+    let (rate, mut ping) = (Rate::new(limits.pushes_per_second), tokio::time::interval_at(first_ping, limits.ping));
     let mut conn =
         Connection { hub, limits, workbook, client_id, role, outbox, rate, heard: Instant::now(), session_id };
     let flow = loop {

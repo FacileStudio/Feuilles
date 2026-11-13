@@ -4,6 +4,22 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+### Added
+
+- Workbook lists show "1 sheet" or "N sheets" on cards and trash rows again. The API stores
+  `workbooks.sheet_count` (migration 0006) with every batch and every new workbook, and returns
+  `sheet_count` in every workbook answer, lists included. A boot task counts the workbooks stored
+  before it, one at a time, without opening rooms.
+
+### Fixed
+
+- A socket's first ping and session check wait one ping interval instead of running at once, so
+  they no longer race the frames right after INIT. This removes a flaky `live_revocation` test.
+
+### Changed
+
+- muse v0.21.2: keyboard moves in menus no longer throw where `scrollIntoView` is missing.
+
 ## [0.9.3] - 2026-11-13
 
 ### Changed

@@ -36,7 +36,8 @@ by side. This holds until a pub/sub layer exists. A deploy disconnects every edi
 seconds; on SIGTERM each room writes its snapshot and closes its sockets with 1001, and clients
 reconnect and resend.
 
-The directory sync, the deletion poll and the hourly trash purge run in that one process.
+The directory sync, the deletion poll, the hourly trash purge and the boot sheet count backfill
+(logged as `sheet count: backfilled workbooks`) run in that one process.
 
 ## Importing spreadsheets
 

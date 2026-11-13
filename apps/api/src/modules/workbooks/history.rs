@@ -91,9 +91,9 @@ async fn load_acks(pool: &PgPool, id: Uuid) -> Result<HashMap<Origin, u32>, Erro
     Ok(rows.into_iter().filter_map(ack).collect())
 }
 
-/// Stores one accepted batch, the workbook's `seq` and the origin's acknowledgement, in one
-/// transaction.
-pub async fn append(pool: &PgPool, id: Uuid, batch: &Batch<'_>) -> Result<(), Error> {
+/// Stores one accepted batch, the workbook's `seq` and `sheet_count` (the `sheets` the model holds
+/// after the batch) and the origin's acknowledgement, in one transaction.
+pub async fn append(pool: &PgPool, id: Uuid, batch: &Batch<'_>, sheets: usize) -> Result<(), Error> {
     let mut tx = pool.begin().await.map_err(failed("store a batch"))?;
     sqlx::query(
         "INSERT INTO workbook_updates (workbook_id, seq, author_id, payload, origin, client_seq)
@@ -108,12 +108,15 @@ pub async fn append(pool: &PgPool, id: Uuid, batch: &Batch<'_>) -> Result<(), Er
     .execute(&mut *tx)
     .await
     .map_err(failed("store a batch"))?;
-    let updated = sqlx::query("UPDATE workbooks SET seq = $2, updated_at = now() WHERE id = $1 AND seq = $2 - 1")
-        .bind(id)
-        .bind(signed(batch.seq))
-        .execute(&mut *tx)
-        .await
-        .map_err(failed("store a batch"))?;
+    let updated = sqlx::query(
+        "UPDATE workbooks SET seq = $2, sheet_count = $3, updated_at = now() WHERE id = $1 AND seq = $2 - 1",
+    )
+    .bind(id)
+    .bind(signed(batch.seq))
+    .bind(i32::try_from(sheets).unwrap_or(i32::MAX))
+    .execute(&mut *tx)
+    .await
+    .map_err(failed("store a batch"))?;
     if updated.rows_affected() != 1 {
         return Err(Error::internal("store a batch", format!("workbook {id} is not at seq {}", batch.seq - 1)));
     }

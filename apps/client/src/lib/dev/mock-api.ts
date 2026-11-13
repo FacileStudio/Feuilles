@@ -27,6 +27,7 @@ function newWorkbook(title: string): Workbook {
 		timezone: 'UTC',
 		language: 'en',
 		sheets: [{ index: 0, name: 'Sheet1', used_range: null }],
+		sheet_count: 1,
 		created_at: now,
 		updated_at: now,
 		trashed_at: null,

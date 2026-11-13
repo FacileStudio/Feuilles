@@ -2,7 +2,7 @@
 	import { Icon, Menu, type MenuEntry } from '@facile/muse';
 	import type { Workbook } from '$lib/backend';
 	import { icons } from '$lib/icons';
-	import { ago } from './format';
+	import { ago, sheetLabel } from './format';
 
 	let {
 		workbook,
@@ -16,9 +16,9 @@
 		oncontextmenu?: (e: MouseEvent) => void;
 	} = $props();
 
-	const count = $derived(workbook.sheets.length);
+	const sheets = $derived(sheetLabel(workbook));
 	const when = $derived(workbook.trashed_at ? `Trashed ${ago(workbook.trashed_at)}` : `Edited ${ago(workbook.updated_at)}`);
-	const detail = $derived(count === 0 ? when : `${count === 1 ? '1 sheet' : `${count} sheets`} · ${when}`);
+	const detail = $derived(sheets ? `${sheets} · ${when}` : when);
 </script>
 
 <li

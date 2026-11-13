@@ -13,6 +13,8 @@ export type Workbook = {
 	timezone: string;
 	language: string;
 	sheets: SheetInfo[];
+	/** Null while the server's boot backfill has not counted an older workbook. */
+	sheet_count?: number | null;
 	created_at: string;
 	updated_at: string;
 	trashed_at: string | null;

@@ -4,6 +4,11 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+### Security
+
+- `docker-compose.yml` no longer carries a default Postgres password: compose refuses to start
+  without `POSTGRES_PASSWORD`
+
 ## [0.8.1] - 2026-11-12
 
 ### Fixed

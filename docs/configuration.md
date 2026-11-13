@@ -7,7 +7,7 @@ boot with a message naming it.
 | Variable | Required | Default | What it does |
 |---|---|---|---|
 | `DATABASE_URL` | yes | | Postgres connection string |
-| `POSTGRES_PASSWORD` | compose | `feuilles-internal-db` | The bundled Postgres password, also used in the compose `DATABASE_URL` default. The default is for local runs; set your own in Dokploy |
+| `POSTGRES_PASSWORD` | compose | required | The bundled Postgres password, also used in the compose `DATABASE_URL` default. Compose refuses to start without it; set it in Dokploy |
 | `PORT` | no | `8080` (tronc's default; the image sets `4000`) | HTTP listen port, also read by `api healthcheck` |
 | `APP_ENV` | no | `development` | `production` requires `OIDC_ISSUER` and `PORTE_TOKEN_KEY` |
 | `LOG_LEVEL` | no | `info` | `debug`, `info`, `warn`, `error` |

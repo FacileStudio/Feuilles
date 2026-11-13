@@ -1,13 +1,16 @@
-import type { Tone } from '@facile/muse';
+import type { ConnectionState } from '@facile/muse';
 import type { SessionStatus } from '$lib/engine/session.svelte';
 
-/** The status dot of an open workbook. */
-export function statusLabel(status: SessionStatus): { tone: Tone; label: string } {
-	if (status === 'open') return { tone: 'success', label: 'Live' };
-	if (status === 'revoked') return { tone: 'danger', label: 'No access' };
-	if (status === 'closed') return { tone: 'neutral', label: 'Closed' };
-	return { tone: 'warning', label: status === 'connecting' ? 'Connecting' : 'Reconnecting' };
-}
+const states: Record<SessionStatus, ConnectionState> = {
+	open: 'live',
+	connecting: 'connecting',
+	reconnecting: 'offline',
+	revoked: 'stopped',
+	closed: 'stopped'
+};
+
+/** The muse `ConnectionHint` state of an open workbook's socket. */
+export const connectionState = (status: SessionStatus): ConnectionState => states[status];
 
 const notices: Record<string, string> = {
 	rate_limited: 'You are editing faster than the server takes edits. The last one was undone; try again.',

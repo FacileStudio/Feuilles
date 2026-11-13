@@ -12,11 +12,14 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 - `feuilles_list_workbooks` pages with `cursor` and `limit`; `feuilles_read_range` stops at the
   sheet's data and answers a `hint` on how to read the rest
 - Embed mode: `/w/<id>?embed=1` hides the sidebar and the workbook header except presence, the
-  connection state and an "Open in Feuilles" link. The client's pages may be framed by
+  connection hint and an "Open in Feuilles" link. The client's pages may be framed by
   `https://docs.facile.studio` (and `http://localhost:*` outside production)
 
 ### Changed
 
+- The workbook header shows who else is here with muse `Presence` and the connection state with
+  muse `ConnectionHint`, which shows nothing while the link is live (no more "Live" dot); muse
+  v0.20.0
 - Each MCP tool declares its own annotations: `write_cells`, `clear_range`, `update_workbook` and
   `delete_workbook` are destructive and idempotent; the delete tools for sheets, rows and columns
   are destructive

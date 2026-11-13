@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { Alert, Avatar, Badge, Button, EmptyState, Icon, Menu, Spinner, StatusDot, toast } from '@facile/muse';
+	import { Alert, Badge, Button, ConnectionHint, EmptyState, Icon, Menu, Presence, Spinner, toast } from '@facile/muse';
 	import { ApiError, backend, exportUrl, signInUrl, socketPath, type Workbook } from '$lib/backend';
 	import { claimOrigin, type OriginClaim } from '$lib/engine/origin';
 	import { Role } from '$lib/engine/protocol';
@@ -13,7 +13,8 @@
 	import { embedded } from '$lib/shell/embed';
 	import RenameModal from '$lib/workbooks/RenameModal.svelte';
 	import { explain } from '$lib/workbooks/list.svelte';
-	import { noticeText, statusLabel } from '$lib/workbooks/status';
+	import { getColor } from '$lib/grid/canvas/palette';
+	import { connectionState, noticeText } from '$lib/workbooks/status';
 
 	type Phase =
 		| { kind: 'loading' }
@@ -90,7 +91,14 @@
 				]
 			: []
 	);
-	const status = $derived(session ? statusLabel(session.status) : null);
+	const peers = $derived(
+		(session?.presence ?? []).map((person) => ({
+			id: person.client_id,
+			name: person.name || 'Someone',
+			color: getColor(person.client_id),
+			picture: person.picture || undefined
+		}))
+	);
 	const embed = $derived(embedded(page.url));
 	const fullUrl = $derived(`/w/${page.params.id ?? ''}`);
 </script>
@@ -114,14 +122,8 @@
 		{/if}
 		{#if session?.role === Role.Viewer}<Badge>View only</Badge>{/if}
 		<div class="ml-auto flex items-center gap-3">
-			{#if session}
-				<div class="flex -space-x-2" aria-label="People here">
-					{#each session.presence as person (person.client_id)}
-						<Avatar src={person.picture || undefined} name={person.name} size="sm" title={person.name} />
-					{/each}
-				</div>
-			{/if}
-			{#if status}<StatusDot tone={status.tone} label={status.label} pulse={status.tone === 'warning'} />{/if}
+			<Presence {peers} />
+			{#if session}<ConnectionHint state={connectionState(session.status)} />{/if}
 			{#if embed}
 				<Button variant="ghost" size="sm" icon={icons.external} href={fullUrl} target="_blank" rel="noopener">
 					Open in Feuilles

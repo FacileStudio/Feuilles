@@ -38,12 +38,14 @@ as a viewer.
 ```json
 {
   "id": "uuid", "space_id": "string or null", "title": "string", "locale": "en", "timezone": "UTC",
-  "language": "en", "sheets": [SheetInfo], "engine_version": "0.9.1",
+  "language": "en", "sheets": [SheetInfo], "sheet_count": 3, "engine_version": "0.9.1",
   "created_at": "rfc3339", "updated_at": "rfc3339", "trashed_at": "rfc3339 or null"
 }
 ```
 
 `sheets` is filled on single-workbook answers and empty in list answers.
+`sheet_count` is set in every answer, lists included. It is the stored count the last saved batch
+left (`workbooks.sheet_count`), or `null` for an older workbook the boot backfill has not counted yet.
 `SheetInfo` is `{"index": 0, "name": "Sheet1", "used_range": "A1:D20" | null}`.
 `Cell` is `{"input": "=A1*2", "value": 42.0 | "text" | true | null, "formatted": "42"}`.
 

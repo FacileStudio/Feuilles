@@ -22,6 +22,9 @@ pub struct Workbook {
     pub language: String,
     /// Its sheets in tab order. Empty in list answers: read one workbook for its sheets.
     pub sheets: Vec<SheetInfo>,
+    /// How many sheets it has, in list answers too, or null while the boot backfill has not
+    /// counted an older workbook yet.
+    pub sheet_count: Option<u32>,
     /// The engine version its bytes are written with. The browser engine must match it.
     pub engine_version: String,
     /// When it was created.

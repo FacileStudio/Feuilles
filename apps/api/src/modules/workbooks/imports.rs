@@ -58,7 +58,7 @@ pub async fn store(
     title: &str,
     model: &Model,
 ) -> Result<Row, Error> {
-    let new = NewRow { space_id, owner_id, title, settings: SETTINGS, snapshot: &model.to_bytes() };
+    let new = NewRow { space_id, owner_id, title, settings: SETTINGS, model };
     store::insert(pool, new).await
 }
 

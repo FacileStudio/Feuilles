@@ -18,7 +18,7 @@
 	import { spaces } from '$lib/state/spaces.svelte';
 	import RenameModal from '$lib/workbooks/RenameModal.svelte';
 	import WorkbookPreview from '$lib/workbooks/WorkbookPreview.svelte';
-	import { ago, titleFromFile } from '$lib/workbooks/format';
+	import { ago, sheetLabel, titleFromFile } from '$lib/workbooks/format';
 	import { explain, WorkbookList } from '$lib/workbooks/list.svelte';
 
 	const MAX_IMPORT = 20 * 1024 * 1024;
@@ -156,7 +156,7 @@
 						<span class="flex min-w-0 flex-col gap-1 px-1 pb-1">
 							<span class="truncate text-fc-sm font-medium text-fc-fg">{workbook.title}</span>
 							<span class="text-fc-xs text-fc-fg-muted">
-								{#if workbook.sheets.length > 0}{workbook.sheets.length === 1 ? '1 sheet' : `${workbook.sheets.length} sheets`} · {/if}{workbook.trashed_at ? `Trashed ${ago(workbook.trashed_at)}` : `Edited ${ago(workbook.updated_at)}`}
+								{#if sheetLabel(workbook)}{sheetLabel(workbook)} · {/if}{workbook.trashed_at ? `Trashed ${ago(workbook.trashed_at)}` : `Edited ${ago(workbook.updated_at)}`}
 							</span>
 						</span>
 					</Card>

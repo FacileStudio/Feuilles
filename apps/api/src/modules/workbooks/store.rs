@@ -4,7 +4,7 @@ use tronc::Error;
 use uuid::Uuid;
 
 use super::types::Workbook;
-use crate::engine::{ENGINE_VERSION, SheetInfo};
+use crate::engine::{self, ENGINE_VERSION, Model, SheetInfo};
 
 /// A `workbooks` row without its snapshot.
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -31,15 +31,19 @@ pub struct Row {
     pub updated_at: OffsetDateTime,
     /// Trash time.
     pub trashed_at: Option<OffsetDateTime>,
+    /// How many sheets the last stored batch left, or `None` until the boot backfill counts them.
+    pub sheet_count: Option<i32>,
 }
 
-const COLUMNS: &str =
-    "id, space_id, owner_id, title, locale, timezone, language, engine_version, created_at, updated_at, trashed_at";
+const COLUMNS: &str = "id, space_id, owner_id, title, locale, timezone, language, engine_version, created_at, \
+     updated_at, trashed_at, sheet_count";
 
 impl Row {
-    /// The API shape, with `sheets`.
+    /// The API shape, with `sheets`. A non-empty `sheets` also gives the sheet count.
     pub fn into_workbook(self, sheets: Vec<SheetInfo>) -> Workbook {
+        let stored = self.sheet_count.and_then(|count| u32::try_from(count).ok());
         Workbook {
+            sheet_count: u32::try_from(sheets.len()).ok().filter(|count| *count > 0).or(stored),
             id: self.id,
             space_id: self.space_id,
             title: self.title,
@@ -94,15 +98,16 @@ pub struct NewRow<'a> {
     pub title: &'a str,
     /// Locale, timezone and language.
     pub settings: (&'a str, &'a str, &'a str),
-    /// The first snapshot.
-    pub snapshot: &'a [u8],
+    /// The first model, stored as the snapshot and counted for `sheet_count`.
+    pub model: &'a Model,
 }
 
-/// Inserts a workbook at seq 0.
+/// Inserts a workbook at seq 0 with its sheet count.
 pub async fn insert(pool: &PgPool, new: NewRow<'_>) -> Result<Row, Error> {
     let sql = format!(
-        "INSERT INTO workbooks (space_id, owner_id, title, locale, timezone, language, engine_version, snapshot)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING {COLUMNS}"
+        "INSERT INTO workbooks
+           (space_id, owner_id, title, locale, timezone, language, engine_version, snapshot, sheet_count)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING {COLUMNS}"
     );
     let (locale, timezone, language) = new.settings;
     sqlx::query_as::<_, Row>(sqlx::AssertSqlSafe(sql))
@@ -113,7 +118,8 @@ pub async fn insert(pool: &PgPool, new: NewRow<'_>) -> Result<Row, Error> {
         .bind(timezone)
         .bind(language)
         .bind(ENGINE_VERSION)
-        .bind(new.snapshot)
+        .bind(new.model.to_bytes())
+        .bind(i32::try_from(engine::sheet_count(new.model)).unwrap_or(i32::MAX))
         .fetch_one(pool)
         .await
         .map_err(failed("create a workbook"))

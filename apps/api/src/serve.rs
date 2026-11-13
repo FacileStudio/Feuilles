@@ -15,7 +15,7 @@ use crate::mcp::{Mcp, porte_verifier};
 use crate::modules::live;
 use crate::router::{self, Options};
 use crate::state::AppState;
-use crate::{MIGRATOR, purge, security};
+use crate::{MIGRATOR, backfill, purge, security};
 
 /// How long in-flight requests get after a shutdown signal.
 pub const DRAIN: Duration = Duration::from_secs(10);
@@ -27,7 +27,8 @@ pub fn fail(step: &str, error: &dyn std::fmt::Display) -> ExitCode {
     ExitCode::FAILURE
 }
 
-/// Steps 3 to 9 of the boot: database, migrations, kits, background tasks, router, serve.
+/// Steps 3 to 9 of the boot: database, migrations, kits, background tasks (trash purge, sheet
+/// count backfill, directory sync), router, serve.
 pub async fn run(config: Config, args: Vec<String>) -> ExitCode {
     let pool = match PgPool::connect(&config.core.database_url).await {
         Ok(pool) => pool,
@@ -86,6 +87,7 @@ async fn mcp(config: &Config, kits: &Kits) -> Result<Option<Mcp>, porte::ConfigE
 
 fn spawn_tasks(state: &AppState, config: &Config, shutdown: &CancellationToken) {
     tokio::spawn(purge::run(state.clone(), shutdown.clone()));
+    tokio::spawn(backfill::run(state.pool.clone(), shutdown.clone()));
     if !config.porte.enabled() {
         tracing::warn!("OIDC_ISSUER is not set: no sign-in, no directory sync, no deletions");
         return;

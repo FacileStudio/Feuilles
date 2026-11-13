@@ -59,10 +59,12 @@ impl Room {
         self.oversized(ctx, count_cells).then_some(TOO_LARGE)
     }
 
-    /// Stores a batch the model took as the next seq, then broadcasts it, sender included.
+    /// Stores a batch the model took as the next seq, with the sheet count it left, then
+    /// broadcasts it, sender included. Every sheet change reaches the database here.
     pub fn accept(&mut self, ctx: &Ctx, client_id: u32, batch: Batch<'_>) -> Result<u64, Error> {
         let seq = batch.seq;
-        if let Err(error) = ctx.block_on(history::append(&ctx.pool, self.id, &batch)) {
+        let sheets = engine::sheet_count(&self.model);
+        if let Err(error) = ctx.block_on(history::append(&ctx.pool, self.id, &batch, sheets)) {
             tracing::error!(workbook = %self.id, error = %error.message, "rooms: a batch could not be stored");
             self.close_all(INTERNAL, "the workbook could not be saved, reconnect");
             return Err(error);

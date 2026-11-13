@@ -3,6 +3,7 @@
 //! The Feuilles API: workbooks on IronCalc, edited together over WebSocket.
 
 pub mod auth;
+pub mod backfill;
 pub mod engine;
 pub mod env;
 pub mod hub;

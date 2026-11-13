@@ -33,6 +33,7 @@ One container, one replica. Rooms live in memory, so two replicas would split a 
 | `apps/api/src/reference/` | The `/docs` table |
 | `apps/api/src/upgrade.rs` | `engine-export` and `engine-verify` |
 | `apps/api/src/import.rs` | `import-xlsx`, through the route's `modules/workbooks/imports.rs` |
+| `apps/api/src/backfill.rs` | The boot task that counts the sheets of workbooks stored before `sheet_count` |
 
 ## Collaboration
 
@@ -70,12 +71,18 @@ API and MCP writes use the same path as client 0, so collaborators see them live
 | `spaces` | `id` | Registre's spaces, mirrored; `deleted_at` is set when Registre stops listing one |
 | `space_members` | `(space_id, subject)` | Members by Registre subject, with name, picture and role |
 | `directory_state`, `deletion_state` | `id = 1` | The last applied snapshot version, the deletion cursor |
-| `workbooks` | `id` | Title, settings, `engine_version`, `snapshot`, `snapshot_seq`, `seq`, `trashed_at` |
+| `workbooks` | `id` | Title, settings, `engine_version`, `snapshot`, `snapshot_seq`, `seq`, `sheet_count`, `trashed_at` |
 | `workbook_updates` | `(workbook_id, seq)` | Batches after the snapshot, with author, origin and `client_seq` |
 | `workbook_acks` | `(workbook_id, origin)` | The highest accepted `client_seq` per browser session; survives snapshots |
 | `mcp_actions` | `id` | tronc's MCP confirmation store, unused while no tool needs a confirmation |
 
 A workbook belongs to a space (`space_id`) or to one person (`space_id IS NULL`, `owner_id`).
+
+`sheet_count` lets lists show "3 sheets" without loading engines. `store::insert` writes it from
+the first model and `history::append` writes it in the same transaction as every batch, from the
+room's model (`Room::accept`), so UI pushes, API and MCP writes all keep it current. It is null
+only for workbooks stored before migration 0006; `src/backfill.rs` counts those once at boot, one
+workbook at a time on a blocking thread, straight from the database and never through a room.
 
 ## Authentication and access
 

@@ -36,7 +36,7 @@ pub async fn create(state: &AppState, identity: &Identity, body: &CreateWorkbook
         owner_id: Some(identity.user_id),
         title: &title,
         settings: (locale, timezone, language),
-        snapshot: &model.to_bytes(),
+        model: &model,
     };
     let row = store::insert(&state.pool, new).await?;
     Ok(row.into_workbook(engine::sheets(&model)))

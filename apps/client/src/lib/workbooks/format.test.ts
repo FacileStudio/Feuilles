@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ago, cleanTitle, titleFromFile } from './format';
+import { ago, cleanTitle, sheetLabel, titleFromFile } from './format';
 
 describe('workbook formatting', () => {
 	it('says how long ago a date was', () => {
@@ -14,6 +14,13 @@ describe('workbook formatting', () => {
 		expect(cleanTitle('   ')).toBeNull();
 		expect(cleanTitle('x'.repeat(201))).toBeNull();
 		expect(cleanTitle('é'.repeat(200))).toBe('é'.repeat(200));
+	});
+
+	it('labels the sheet count from the list column or the sheets', () => {
+		expect(sheetLabel({ sheets: [], sheet_count: 1 })).toBe('1 sheet');
+		expect(sheetLabel({ sheets: [], sheet_count: 3 })).toBe('3 sheets');
+		expect(sheetLabel({ sheets: [{ index: 0, name: 'A', used_range: null }] })).toBe('1 sheet');
+		expect(sheetLabel({ sheets: [], sheet_count: null })).toBeNull();
 	});
 
 	it('names an import after its file', () => {

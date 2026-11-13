@@ -85,6 +85,7 @@ test('the workbook card menu walks with the keyboard and hands focus back to the
 	const page = await signedIn('Card menu', () => '/', true);
 	const card = page.getByRole('link', { name: /Card menu/ });
 	await card.waitFor();
+	expect(await card.textContent()).toContain('1 sheet ·');
 	await card.click({ button: 'right' });
 	await walksMenu(page, 'Open', 'Move to trash');
 	expect(await page.evaluate(() => document.activeElement?.textContent)).toContain('Card menu');

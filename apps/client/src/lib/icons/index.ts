@@ -24,6 +24,12 @@ export const icons = {
 	freeze: 'solar:snowflake-linear',
 	workbook: 'solar:table-linear',
 	paste: 'solar:clipboard-linear',
+	cut: 'solar:scissors-linear',
+	clear: 'solar:eraser-linear',
+	insertAbove: 'solar:arrow-up-linear',
+	insertBelow: 'solar:arrow-down-linear',
+	insertLeft: 'solar:arrow-left-linear',
+	insertRight: 'solar:arrow-right-linear',
 	more: 'solar:menu-dots-linear',
 	logo: 'solar:table-minimalistic-bold-duotone'
 } as const;

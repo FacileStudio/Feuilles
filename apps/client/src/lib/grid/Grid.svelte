@@ -120,7 +120,15 @@
 	onMount(() => {
 		const observer = new ResizeObserver(() => (size = { width: sheet.clientWidth, height: sheet.clientHeight }));
 		observer.observe(sheet);
-		return () => observer.disconnect();
+		const theme = new MutationObserver(redraw);
+		theme.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme', 'style'] });
+		const scheme = matchMedia('(prefers-color-scheme: dark)');
+		scheme.addEventListener('change', redraw);
+		return () => {
+			observer.disconnect();
+			theme.disconnect();
+			scheme.removeEventListener('change', redraw);
+		};
 	});
 
 	function contextMenu(event: MouseEvent): void {

@@ -1,5 +1,6 @@
 import type { CellLink, CellStyle, MergedCell, Model } from "@ironcalc/wasm";
 import { columnNameFromNumber } from "@ironcalc/wasm";
+import { cellFill, cellInk, lineInk } from "../../../contrast";
 import { getColor } from "../../../palette";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
@@ -444,16 +445,12 @@ export default class WorksheetCanvas {
   } {
     const fontSize = style.font?.sz || 13;
     let font = `${fontSize}px ${this.theme.cellFontFamily}`;
-    let color = style.fill.color
-      ? this.theme.filledCellTextColor
-      : this.theme.defaultTextColor;
+    const color = this.ink(
+      style.font?.color ? this.model.resolveColor(style.font.color) : null,
+      this.fillOf(style) ?? this.theme.backgroundColor,
+    );
 
     if (style.font) {
-      // Font.color is optional: a missing color means "use the default" — fall back
-      // to the theme's default text color rather than leaving it undefined.
-      if (style.font.color) {
-        color = this.model.resolveColor(style.font.color);
-      }
       font = style.font.b ? `bold ${font}` : `400 ${font}`;
       if (style.font.i) {
         font = `italic ${font}`;
@@ -1027,10 +1024,7 @@ export default class WorksheetCanvas {
     const extended = this.model.getCellStyle(selectedSheet, row, column);
     const style = extended.style;
 
-    let backgroundColor = this.theme.backgroundColor;
-    if (style.fill.color) {
-      backgroundColor = this.model.resolveColor(style.fill.color);
-    }
+    const backgroundColor = this.fillOf(style) ?? this.theme.backgroundColor;
     const context = this.ctx;
     context.fillStyle = backgroundColor;
     context.fillRect(x + 0.5, y + 0.5, width - 1, height - 1);
@@ -1090,7 +1084,27 @@ export default class WorksheetCanvas {
       r,
       c,
     ).style;
-    return style.fill.color ? this.model.resolveColor(style.fill.color) : null;
+    return this.fillOf(style);
+  }
+
+  /** The fill a style paints on screen, or null for the theme background. */
+  private fillOf(style: CellStyle): string | null {
+    return style.fill.color
+      ? cellFill(this.model.resolveColor(style.fill.color))
+      : null;
+  }
+
+  /** A text colour made readable on `background` in the current theme. */
+  private ink(color: string | null, background: string): string {
+    return cellInk(color, background, {
+      text: this.theme.defaultTextColor,
+      background: this.theme.backgroundColor,
+    });
+  }
+
+  /** A border colour where automatic black follows the theme text colour. */
+  private line(color: string): string {
+    return lineInk(color, this.theme.defaultTextColor);
   }
 
   // Draws the left border of cell (row, column) from (x, y) to (x, y + height)
@@ -1128,14 +1142,14 @@ export default class WorksheetCanvas {
       let borderLeftColor = this.getCellGridColor(selectedSheet, fillColor);
       let borderLeftStyle = "thin";
       if (border.left) {
-        borderLeftColor =
-          this.model.resolveColor(border.left.color) ||
-          this.theme.defaultTextColor;
+        borderLeftColor = this.line(
+          this.model.resolveColor(border.left.color),
+        );
         borderLeftStyle = border.left.style;
       } else if (leftStyle.border.right) {
-        borderLeftColor =
-          this.model.resolveColor(leftStyle.border.right.color) ||
-          this.theme.defaultTextColor;
+        borderLeftColor = this.line(
+          this.model.resolveColor(leftStyle.border.right.color),
+        );
         borderLeftStyle = leftStyle.border.right.style;
       } else if (fillColor) {
         borderLeftColor = fillColor;
@@ -1194,14 +1208,14 @@ export default class WorksheetCanvas {
     let borderTopColor = this.getCellGridColor(selectedSheet, fillColor);
     let borderTopStyle = "thin";
     if (border.top) {
-      borderTopColor =
-        this.model.resolveColor(border.top.color) ||
-        this.theme.defaultTextColor;
+      borderTopColor = this.line(
+        this.model.resolveColor(border.top.color),
+      );
       borderTopStyle = border.top.style;
     } else if (topStyle.border.bottom) {
-      borderTopColor =
-        this.model.resolveColor(topStyle.border.bottom.color) ||
-        this.theme.defaultTextColor;
+      borderTopColor = this.line(
+        this.model.resolveColor(topStyle.border.bottom.color),
+      );
       borderTopStyle = topStyle.border.bottom.style;
     } else if (fillColor) {
       borderTopColor = fillColor;

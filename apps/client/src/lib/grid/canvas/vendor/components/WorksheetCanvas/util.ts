@@ -1,5 +1,3 @@
-import { defaultThemeVariables } from "../../theme/theme";
-
 // Get a 10% transparency of an hex color
 export function hexToRGBA10Percent(colorHex: string): string {
   // Remove the leading hash (#) if present
@@ -68,13 +66,28 @@ function readCSSVar(name: string, style: CSSStyleDeclaration): string {
   return style.getPropertyValue(name).trim();
 }
 
+const hexCache = new Map<string, string>();
+
+/** Resolves any CSS colour (the muse tokens are OKLCH) to `#rrggbb` by painting one pixel. */
+function toHex(color: string): string {
+  const known = hexCache.get(color);
+  if (known) return known;
+  const context = document
+    .createElement("canvas")
+    .getContext("2d", { willReadFrequently: true });
+  if (!context) return color;
+  context.fillStyle = color;
+  context.fillRect(0, 0, 1, 1);
+  const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
+  const hex = `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+  hexCache.set(color, hex);
+  return hex;
+}
+
 export function readThemeFromCSS(root: Element): Theme {
   const style = getComputedStyle(root);
   return {
-    backgroundColor: readCSSVar("--palette-common-white", style),
-    // Fills don't follow the theme, so filled cells always use the light-theme text color
-    filledCellTextColor:
-      defaultThemeVariables["--palette-sheet-default-text-color"],
+    backgroundColor: toHex(readCSSVar("--palette-common-white", style)),
     commonWhite: readCSSVar("--palette-common-white", style),
     gridColor: readCSSVar("--palette-sheet-grid-color", style),
     cellFontFamily: readCSSVar(
@@ -99,7 +112,9 @@ export function readThemeFromCSS(root: Element): Theme {
       "--palette-sheet-grid-separator-color",
       style,
     ),
-    defaultTextColor: readCSSVar("--palette-sheet-default-text-color", style),
+    defaultTextColor: toHex(
+      readCSSVar("--palette-sheet-default-text-color", style),
+    ),
     headerSelectedColor: readCSSVar(
       "--palette-sheet-header-selected-color",
       style,
@@ -121,7 +136,6 @@ export interface Theme {
   headerFont: string;
   gridSeparatorColor: string;
   defaultTextColor: string;
-  filledCellTextColor: string;
   commonWhite: string;
   headerSelectedColor: string;
 }

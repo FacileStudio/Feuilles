@@ -5,6 +5,7 @@
 	import type { GridCommands } from './commands';
 	import type { Zone } from './pointer';
 	import { menuCopy, menuPaste } from './grid-clipboard';
+	import { icons } from '$lib/icons';
 
 	let { session, commands, grid }: { session: Session; commands: GridCommands; grid: () => HTMLElement | null } = $props();
 
@@ -22,28 +23,28 @@
 	const items = $derived.by<MenuEntry[]>(() => {
 		const zone = position?.zone ?? 'cells';
 		const rows: MenuEntry[] = [
-			{ label: 'Insert row above', disabled: off, onselect: () => commands.insertRows(false) },
-			{ label: 'Insert row below', disabled: off, onselect: () => commands.insertRows(true) },
-			{ label: 'Delete rows', tone: 'danger', disabled: off, onselect: () => commands.deleteLines(false) }
+			{ label: 'Insert row above', icon: icons.insertAbove, disabled: off, onselect: () => commands.insertRows(false) },
+			{ label: 'Insert row below', icon: icons.insertBelow, disabled: off, onselect: () => commands.insertRows(true) },
+			{ label: 'Delete rows', icon: icons.remove, tone: 'danger', disabled: off, onselect: () => commands.deleteLines(false) }
 		];
 		const columns: MenuEntry[] = [
-			{ label: 'Insert column left', disabled: off, onselect: () => commands.insertColumns(false) },
-			{ label: 'Insert column right', disabled: off, onselect: () => commands.insertColumns(true) },
-			{ label: 'Delete columns', tone: 'danger', disabled: off, onselect: () => commands.deleteLines(true) }
+			{ label: 'Insert column left', icon: icons.insertLeft, disabled: off, onselect: () => commands.insertColumns(false) },
+			{ label: 'Insert column right', icon: icons.insertRight, disabled: off, onselect: () => commands.insertColumns(true) },
+			{ label: 'Delete columns', icon: icons.remove, tone: 'danger', disabled: off, onselect: () => commands.deleteLines(true) }
 		];
 		if (zone === 'rows') return rows;
 		if (zone === 'columns') return columns;
 		return [
-			{ label: 'Copy', onselect: () => menuCopy(grid()) },
-			{ label: 'Cut', disabled: off, onselect: () => menuCopy(grid(), true) },
-			{ label: 'Paste', disabled: off, onselect: () => void menuPaste(session) },
+			{ label: 'Copy', icon: icons.copy, onselect: () => menuCopy(grid()) },
+			{ label: 'Cut', icon: icons.cut, disabled: off, onselect: () => menuCopy(grid(), true) },
+			{ label: 'Paste', icon: icons.paste, disabled: off, onselect: () => void menuPaste(session) },
 			{ separator: true },
 			...rows.slice(0, 2),
 			...columns.slice(0, 2),
 			{ separator: true },
 			rows[2],
 			columns[2],
-			{ label: 'Clear contents', disabled: off, onselect: () => commands.clear() }
+			{ label: 'Clear contents', icon: icons.clear, disabled: off, onselect: () => commands.clear() }
 		];
 	});
 </script>

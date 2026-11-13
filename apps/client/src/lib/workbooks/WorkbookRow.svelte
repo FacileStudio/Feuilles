@@ -16,8 +16,9 @@
 		oncontextmenu?: (e: MouseEvent) => void;
 	} = $props();
 
-	const sheets = $derived(workbook.sheets.length === 1 ? '1 sheet' : `${workbook.sheets.length} sheets`);
+	const count = $derived(workbook.sheets.length);
 	const when = $derived(workbook.trashed_at ? `Trashed ${ago(workbook.trashed_at)}` : `Edited ${ago(workbook.updated_at)}`);
+	const detail = $derived(count === 0 ? when : `${count === 1 ? '1 sheet' : `${count} sheets`} · ${when}`);
 </script>
 
 <li
@@ -28,12 +29,12 @@
 	{#if href}
 		<a {href} class="min-w-0 flex-1 rounded-fc-sm focus-visible:outline-2 focus-visible:outline-fc-ring">
 			<span class="block truncate text-fc-md font-medium text-fc-fg">{workbook.title}</span>
-			<span class="block truncate text-fc-sm text-fc-fg-muted">{sheets} · {when}</span>
+			<span class="block truncate text-fc-sm text-fc-fg-muted">{detail}</span>
 		</a>
 	{:else}
 		<div class="min-w-0 flex-1">
 			<span class="block truncate text-fc-md font-medium text-fc-fg">{workbook.title}</span>
-			<span class="block truncate text-fc-sm text-fc-fg-muted">{sheets} · {when}</span>
+			<span class="block truncate text-fc-sm text-fc-fg-muted">{detail}</span>
 		</div>
 	{/if}
 	<Menu label={`Actions for ${workbook.title}`} items={actions} align="end">

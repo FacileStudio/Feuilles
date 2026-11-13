@@ -26,7 +26,16 @@
 	let busy = $state(false);
 	let renaming = $state<Workbook | null>(null);
 	let renameOpen = $state(false);
-	let contextMenu = $state<{ x: number; y: number; workbook: Workbook } | null>(null);
+	let menuTarget = $state<Workbook | null>(null);
+	let menuReturn: HTMLElement | null = null;
+	let contextMenu: ContextMenu;
+
+	function openMenu(event: MouseEvent, workbook: Workbook) {
+		event.preventDefault();
+		menuTarget = workbook;
+		menuReturn = (event.currentTarget as HTMLElement).querySelector('a, [role="button"], button');
+		void contextMenu.open(event.clientX, event.clientY);
+	}
 	let gridEl = $state<HTMLElement | null>(null);
 	let cols = $state(1);
 
@@ -137,10 +146,7 @@
 			{#each list.items as workbook (workbook.id)}
 				<li
 					class="group/workbook relative"
-					oncontextmenu={(e) => {
-						e.preventDefault();
-						contextMenu = { x: e.clientX, y: e.clientY, workbook };
-					}}
+					oncontextmenu={(event) => openMenu(event, workbook)}
 				>
 					<Card
 						href="/w/{workbook.id}"
@@ -191,11 +197,4 @@
 
 <RenameModal bind:open={renameOpen} title={renaming?.title ?? ''} onSave={rename} />
 
-{#if contextMenu}
-	<ContextMenu
-		x={contextMenu.x}
-		y={contextMenu.y}
-		items={actions(contextMenu.workbook)}
-		onclose={() => (contextMenu = null)}
-	/>
-{/if}
+<ContextMenu bind:this={contextMenu} label="Workbook actions" items={menuTarget ? actions(menuTarget) : []} returnFocus={() => menuReturn} />

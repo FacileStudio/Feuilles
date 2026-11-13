@@ -15,7 +15,7 @@
 		return view.getCellStyle(sheet, row, column).style;
 	});
 	const off = $derived(!session.canEdit);
-	const ghost = '[&>button]:bg-transparent [&>button]:text-fc-fg-muted [&>button]:hover:bg-fc-surface [&>button]:hover:text-fc-fg [&>button]:rounded-fc-pill';
+	const ghost = '[&>span>button]:bg-transparent [&>span>button]:text-fc-fg-muted [&>span>button]:hover:bg-fc-surface [&>span>button]:hover:text-fc-fg [&>span>button]:rounded-fc-pill';
 
 	const toggles: { id: Toggle; label: string; icon: string }[] = [
 		{ id: 'bold', label: 'Bold', icon: icons.bold },
@@ -30,22 +30,22 @@
 		{ id: 'right', label: 'Align right', icon: icons.alignRight }
 	] as const;
 
-	const formats: [NumberFormat, string][] = [
-		['general', 'Automatic'],
-		['number', 'Number 1,234.56'],
-		['percent', 'Percent 12.34%'],
-		['currency', 'Currency €1,234.56'],
-		['date', 'Date 2026-11-10']
+	const formats: [NumberFormat, string, string][] = [
+		['general', 'Automatic', icons.automatic],
+		['number', 'Number 1,234.56', icons.number],
+		['percent', 'Percent 12.34%', icons.percent],
+		['currency', 'Currency €1,234.56', icons.currency],
+		['date', 'Date 2026-11-10', icons.calendar]
 	];
-	const formatItems = $derived<MenuEntry[]>(formats.map(([id, label]) => ({ label, disabled: off, onselect: () => commands.format(id) })));
+	const formatItems = $derived<MenuEntry[]>(formats.map(([id, label, icon]) => ({ label, icon, disabled: off, onselect: () => commands.format(id) })));
 	const lineItems = $derived<MenuEntry[]>([
-		{ label: 'Insert row above', disabled: off, onselect: () => commands.insertRows(false) },
-		{ label: 'Insert row below', disabled: off, onselect: () => commands.insertRows(true) },
-		{ label: 'Insert column left', disabled: off, onselect: () => commands.insertColumns(false) },
-		{ label: 'Insert column right', disabled: off, onselect: () => commands.insertColumns(true) },
+		{ label: 'Insert row above', icon: icons.insertAbove, disabled: off, onselect: () => commands.insertRows(false) },
+		{ label: 'Insert row below', icon: icons.insertBelow, disabled: off, onselect: () => commands.insertRows(true) },
+		{ label: 'Insert column left', icon: icons.insertLeft, disabled: off, onselect: () => commands.insertColumns(false) },
+		{ label: 'Insert column right', icon: icons.insertRight, disabled: off, onselect: () => commands.insertColumns(true) },
 		{ separator: true },
-		{ label: 'Delete rows', tone: 'danger', disabled: off, onselect: () => commands.deleteLines(false) },
-		{ label: 'Delete columns', tone: 'danger', disabled: off, onselect: () => commands.deleteLines(true) }
+		{ label: 'Delete rows', icon: icons.remove, tone: 'danger', disabled: off, onselect: () => commands.deleteLines(false) },
+		{ label: 'Delete columns', icon: icons.remove, tone: 'danger', disabled: off, onselect: () => commands.deleteLines(true) }
 	]);
 </script>
 
@@ -62,10 +62,10 @@
 {/snippet}
 
 <div class="flex shrink-0 items-center gap-1 overflow-x-auto bg-fc-component px-2 py-1" role="toolbar" aria-label="Formatting">
-	<IconButton variant="ghost" aria-label="Undo" title="Undo" disabled={off} onclick={() => commands.history(false)}>
+	<IconButton variant="ghost" aria-label="Undo" disabled={off} onclick={() => commands.history(false)}>
 		<Icon icon={icons.undo} />
 	</IconButton>
-	<IconButton variant="ghost" aria-label="Redo" title="Redo" disabled={off} onclick={() => commands.history(true)}>
+	<IconButton variant="ghost" aria-label="Redo" disabled={off} onclick={() => commands.history(true)}>
 		<Icon icon={icons.redo} />
 	</IconButton>
 	<span class="mx-1 h-6 w-2 shrink-0" aria-hidden="true"></span>
@@ -74,7 +74,6 @@
 			variant={pressed(toggle.id) ? 'secondary' : 'ghost'}
 			aria-label={toggle.label}
 			aria-pressed={pressed(toggle.id)}
-			title={toggle.label}
 			disabled={off}
 			onclick={() => commands.toggle(toggle.id)}
 		>
@@ -88,7 +87,6 @@
 		<IconButton
 			variant={style?.alignment?.horizontal === align.id ? 'secondary' : 'ghost'}
 			aria-label={align.label}
-			title={align.label}
 			disabled={off}
 			onclick={() => commands.align(align.id)}
 		>
@@ -102,7 +100,7 @@
 	<Menu label="Rows and columns" items={lineItems} class={ghost}>
 		{#snippet trigger()}<Icon icon={icons.layers} size={18} />{/snippet}
 	</Menu>
-	<IconButton variant="ghost" aria-label="Freeze panes at the active cell" title="Freeze panes" disabled={off} onclick={() => commands.freeze()}>
+	<IconButton variant="ghost" aria-label="Freeze panes at the active cell" tooltip="Freeze panes" disabled={off} onclick={() => commands.freeze()}>
 		<Icon icon={icons.freeze} />
 	</IconButton>
 </div>

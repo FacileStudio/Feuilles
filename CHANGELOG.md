@@ -4,6 +4,12 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-11-13
+
+### Changed
+
+- Deploy: healthchecks run every 30 s with a 1 s start interval, so a deploy cuts over in a few seconds.
+
 ## [0.8.2] - 2026-11-13
 
 ### Security

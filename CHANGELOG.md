@@ -11,6 +11,11 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
   `sheet_count` in every workbook answer, lists included. A boot task counts the workbooks stored
   before it, one at a time, without opening rooms.
 
+### Fixed
+
+- A socket's first ping and session check wait one ping interval instead of running at once, so
+  they no longer race the frames right after INIT. This removes a flaky `live_revocation` test.
+
 ### Changed
 
 - muse v0.21.2: keyboard moves in menus no longer throw where `scrollIntoView` is missing.

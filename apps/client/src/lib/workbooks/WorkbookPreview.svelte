@@ -70,15 +70,11 @@
 		</div>
 	</div>
 
-	<div class="flex items-center justify-between pt-1">
-		<div class="flex items-center gap-1.5 rounded-fc-sm bg-fc-component px-2 py-0.5">
-			<span class="size-1.5 rounded-full bg-emerald-500"></span>
-			<span class="max-w-[100px] truncate text-fc-xs font-medium text-fc-fg">
-				{workbook.sheets[0]?.name || 'Sheet1'}
+	{#if workbook.sheets.length > 0}
+		<div class="flex items-center justify-end pt-1">
+			<span class="rounded-fc-xs bg-fc-page/50 px-1.5 py-0.5 text-fc-xs text-fc-fg-muted">
+				{sheetCount}
 			</span>
 		</div>
-		<span class="rounded-fc-xs bg-fc-page/50 px-1.5 py-0.5 text-fc-xs text-fc-fg-muted">
-			{sheetCount}
-		</span>
-	</div>
+	{/if}
 </div>

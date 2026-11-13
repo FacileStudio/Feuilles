@@ -64,6 +64,12 @@ async fn a_deleted_person_cannot_break_the_room_and_loses_every_socket() {
         "a vanished author must not close with 1011"
     );
     let eraser = api::auth::AppData::new(state.pool.clone(), api::modules::live::evictor(state.hub.clone()));
+    eprintln!("DBG before erase");
     eraser.on_person_deleted(ISSUER, &member.subject).await.expect("erase");
+    eprintln!("DBG erased");
+    for _ in 0..3 {
+        let event = tokio::time::timeout(Duration::from_secs(4), gone.next()).await;
+        eprintln!("DBG gone {event:?}");
+    }
     assert_eq!(gone.closed().await, Some(1008), "a space workbook socket closes when its person is deleted");
 }

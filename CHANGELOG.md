@@ -4,6 +4,14 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-11-14
+
+### Added
+
+- The client loads Vision's tracker (`https://vision.facile.studio/s.js`, with `data-mask`) on
+  `feuilles.facile.studio` only. The API adds `https://vision.facile.studio` to `script-src`; the
+  loader's hash comes with the other inline scripts of the build
+
 ## [0.9.5] - 2026-11-13
 
 ### Added

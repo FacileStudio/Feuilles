@@ -4,6 +4,20 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+### Added
+
+- An icon on every entry of the sheet's right-click menu
+
+### Fixed
+
+- Cell text is readable in the dark theme: black "automatic" text follows the theme text colour,
+  white "automatic" fills follow the theme background and black borders follow the text colour,
+  and any text colour under 3:1 against its cell falls back to a readable theme colour. Rendering
+  only, stored styles do not change
+- The sheet redraws in the new colours as soon as the theme changes
+- Workbook cards no longer show a "Sheet1" chip, nor "0 sheets" where the list does not know the
+  count
+
 ## [0.9.0] - 2026-11-13
 
 ### Added

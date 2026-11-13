@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: feuilles
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-feuilles-internal-db}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       POSTGRES_DB: feuilles
     volumes:
     - db_data:/var/lib/postgresql/data
@@ -48,7 +48,7 @@ services:
       traefik.http.routers.feuilles-secure.service: feuilles-api
       traefik.http.services.feuilles-api.loadbalancer.server.port: "4000"
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgres://feuilles:${POSTGRES_PASSWORD:-feuilles-internal-db}@feuilles-db:5432/feuilles?sslmode=disable}
+      DATABASE_URL: ${DATABASE_URL:-postgres://feuilles:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@feuilles-db:5432/feuilles?sslmode=disable}
       PORT: '4000'
       LOG_LEVEL: ${LOG_LEVEL:-info}
       TRUSTED_PROXIES: 'private,cloudflare'

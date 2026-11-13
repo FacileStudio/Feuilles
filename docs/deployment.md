@@ -70,7 +70,7 @@ copies stay in `/tmp` until the next deploy recreates the container.
 
 ## The database password
 
-`docker-compose.yml` reads `POSTGRES_PASSWORD`, with a default for local runs only. Set it in the
+`docker-compose.yml` requires `POSTGRES_PASSWORD` and refuses to start without it. Set it in the
 Dokploy environment through the `dokploy-env-safe` flow. Postgres applies `POSTGRES_PASSWORD` only
 when it creates the volume, so on an existing database change it first, then redeploy:
 `docker exec feuilles-db psql -U feuilles -c "ALTER USER feuilles PASSWORD '<new>'"`.

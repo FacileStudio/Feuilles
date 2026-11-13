@@ -4,6 +4,8 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-11-13
+
 ### Added
 
 - An icon on every entry of the sheet's right-click menu

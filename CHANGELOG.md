@@ -4,6 +4,13 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-11-14
+
+### Fixed
+
+- Landing: "What you get" is now a two-column split with an icon list instead of a second
+  card grid, so it no longer repeats the "Beyond the grid" tiles right above it
+
 ## [0.13.0] - 2026-11-14
 
 ### Changed

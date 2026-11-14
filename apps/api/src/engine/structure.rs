@@ -1,14 +1,12 @@
 use ironcalc::base::expressions::types::Area as Span;
 use tronc::Error;
 
+use super::range::clear_span;
 use super::sheets::{SheetRef, sheet_index, sheet_names};
 use super::{Area, MAX_COLUMN, MAX_ROW, Model};
 
 /// The most rows or columns one insert or delete touches.
 pub const MAX_LINES: i32 = 10_000;
-
-/// The most cells of data one clear may cover.
-pub const MAX_CLEAR_CELLS: i64 = 1_000_000;
 
 /// Rows or columns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -113,24 +111,15 @@ fn lines(at: i32, count: i32, last: i32) -> Result<i32, Error> {
 
 fn clear(model: &mut Model, sheet: u32, area: Area) -> Result<(), Error> {
     let worksheet = model.get_model().workbook.worksheet(sheet).map_err(Error::invalid)?;
-    if worksheet.sheet_data.is_empty() {
-        return Ok(());
-    }
-    let used = worksheet.dimension();
-    let top = area.top.max(used.min_row);
-    let left = area.left.max(used.min_column);
-    let (bottom, right) = (area.bottom.min(used.max_row), area.right.min(used.max_column));
-    if top > bottom || left > right {
-        return Ok(());
-    }
-    let span = Area { top, left, bottom, right };
-    if span.cells() > MAX_CLEAR_CELLS {
-        return Err(Error::invalid(format!(
-            "the range covers {} cells of data, more than {MAX_CLEAR_CELLS}; clear a narrower range",
-            span.cells()
-        )));
-    }
-    let span = Span { sheet, row: top, column: left, width: right - left + 1, height: bottom - top + 1 };
+    let used = (!worksheet.sheet_data.is_empty()).then(|| worksheet.dimension()).map(|d| Area {
+        top: d.min_row,
+        left: d.min_column,
+        bottom: d.max_row,
+        right: d.max_column,
+    });
+    let Some(span) = clear_span(area, used)? else { return Ok(()) };
+    let (width, height) = (span.right - span.left + 1, span.bottom - span.top + 1);
+    let span = Span { sheet, row: span.top, column: span.left, width, height };
     model.range_clear_contents(&span).map_err(Error::invalid)
 }
 

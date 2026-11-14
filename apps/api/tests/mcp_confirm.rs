@@ -7,6 +7,7 @@ use common::web::{browser_login, call, send};
 use common::{Person, person, serve_with, state};
 use http::{Method, Request, StatusCode, header};
 use serde_json::{Value, json};
+use tronc::mcp::rmcp::model::CallToolRequestParams;
 use tronc::mcptest;
 
 fn from_browser(method: Method, path: &str, cookie: &str) -> Request<Body> {
@@ -25,6 +26,11 @@ async fn delete_request(client: &mcptest::Client) -> (String, String) {
     let id = mcptest::decode::<Value>(&created)["id"].as_str().expect("id").to_owned();
     let write = json!({"workbook_id": id, "writes": [{"sheet": 0, "row": 2, "column": 1, "input": "keep"}]});
     mcptest::call(client, "feuilles_write_cells", args(write)).await;
+    let far = json!({"workbook_id": id, "writes": [{"sheet": 0, "row": 100_001, "column": 11, "input": "far"}]});
+    mcptest::call(client, "feuilles_write_cells", args(far)).await;
+    let clear = args(json!({"workbook_id": id, "sheet": 0, "range": "A1:K100001"}));
+    let refused = client.call_tool(CallToolRequestParams::new("feuilles_clear_range").with_arguments(clear)).await;
+    assert!(refused.as_ref().is_ok_and(|r| r.is_error == Some(true)), "an oversized clear was asked: {refused:?}");
     let action = ask_delete(client, &id).await;
     (id, action)
 }
@@ -52,6 +58,7 @@ async fn assert_unframable(router: &Router, cookie: &str) {
     assert_eq!(response.status(), StatusCode::OK);
     let policy = response.headers()["content-security-policy"].to_str().expect("policy");
     assert!(policy.contains("frame-ancestors 'none'"), "{policy}");
+    assert_eq!(response.headers()["x-frame-options"], "DENY");
 }
 
 #[tokio::test(flavor = "multi_thread")]

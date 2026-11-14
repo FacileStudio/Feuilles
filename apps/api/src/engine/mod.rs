@@ -14,10 +14,10 @@ mod write;
 pub use csv_export::export_csv;
 pub use csv_import::import_csv;
 pub use files::{export_xlsx, import_xlsx};
-pub use range::{Area, MAX_COLUMN, MAX_ROW, column_name, parse_range};
+pub use range::{Area, MAX_CLEAR_CELLS, MAX_COLUMN, MAX_ROW, clear_span, column_name, parse_range};
 pub use read::{Cell, SheetInfo, cell_count, read_area, sheet_count, sheets};
 pub use sheets::{SheetRef, sheet_index, sheet_names};
-pub use structure::{Axis, Edit, EditKind, MAX_CLEAR_CELLS, MAX_LINES, apply_edit, check_edit};
+pub use structure::{Axis, Edit, EditKind, MAX_LINES, apply_edit, check_edit};
 pub use write::{CellWrite, new_sheet, set_inputs};
 
 use ironcalc::base::UserModel;

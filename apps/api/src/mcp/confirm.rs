@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use super::planned::Planned;
 use super::workbook;
-use crate::engine::{SheetInfo, check_edit};
+use crate::engine::{EditKind, SheetInfo, check_edit, clear_span, parse_range};
 use crate::hub::Change;
 use crate::modules::workbooks::model;
 use crate::modules::workbooks::service::{Access, require};
@@ -96,8 +96,14 @@ pub async fn ask(state: &AppState, call: &Call, kind: &str, planned: Planned) ->
     if row.trashed_at.is_some() {
         return Err(ToolError::new("the workbook is in the trash and read-only; restore it in Feuilles first"));
     }
-    let names: Vec<String> = model::sheets(state, row.id).await?.into_iter().map(|sheet| sheet.name).collect();
-    let sheet = check_edit(&names, &planned.edit()?)?;
+    let sheets = model::sheets(state, row.id).await?;
+    let names: Vec<String> = sheets.iter().map(|sheet| sheet.name.clone()).collect();
+    let edit = planned.edit()?;
+    let sheet = check_edit(&names, &edit)?;
+    if let EditKind::Clear(area) = edit.kind {
+        let used = sheets[sheet as usize].used_range.as_deref().map(parse_range).transpose()?;
+        clear_span(area, used)?;
+    }
     let question = planned.question(&row.title, &names[sheet as usize]);
     let target = serde_json::to_string(&planned).map_err(|e| ToolError(e.to_string()))?;
     let (asked, outcome) = confirmations.request(call, kind, &target, &question).await?;

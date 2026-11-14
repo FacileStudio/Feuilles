@@ -1,4 +1,22 @@
+import { ApiError } from './api/error';
 import type { PendingAction } from './api/types';
+
+/** tronc's refusal of anything but the person's own browser session on the confirm page (`tronc::mcp::DELEGATED`). */
+export const OWN_SESSION_REFUSAL = "only the person's own session can confirm actions";
+
+/**
+ * Whether `error` is the confirm page's refusal of a session that is not the person's own browser login: a
+ * cookie from before the upgrade, a CLI or API token, or the mobile or desktop app. Signing in again in the
+ * browser fixes it; any other 403, such as a demotion to viewer, does not.
+ */
+export function notOwnSession(error: unknown): boolean {
+	return (
+		error instanceof ApiError &&
+		error.status === 403 &&
+		error.code === 'permission_denied' &&
+		error.message === OWN_SESSION_REFUSAL
+	);
+}
 
 /** How the confirm page describes an action's state: ready to run, or its workbook changed or vanished since. */
 export const STATES: Record<PendingAction['state'], { tone: 'success' | 'warning' | 'danger'; label: string }> = {

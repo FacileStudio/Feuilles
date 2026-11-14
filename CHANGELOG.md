@@ -4,6 +4,17 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-11-14
+
+### Fixed
+
+- The link preview image and the manifest carry the suite catalog slogan and description
+- The "Self-host" link opens the Suite page in the visitor's language
+
+### Changed
+
+- `@facile/muse` v0.25.1: a long developer command wraps instead of scrolling
+
 ## [0.14.0] - 2026-11-14
 
 ### Added

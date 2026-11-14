@@ -4,6 +4,8 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-14
+
 ### Added
 
 - The Bulle sidebar on a workbook: the header button opens the person's assistant beside the

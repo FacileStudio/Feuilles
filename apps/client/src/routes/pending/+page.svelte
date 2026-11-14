@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { Alert, ApprovalCard, Button, EmptyState, PageHeader, Spinner, StatusDot, toast } from '@facile/muse';
-	import { ApiError, backend, type PendingAction } from '$lib/backend';
+	import { backend, type PendingAction } from '$lib/backend';
 	import { icons } from '$lib/icons';
-	import { STATES, targetArgs, targetWorkbook } from '$lib/pending';
+	import { STATES, notOwnSession, targetArgs, targetWorkbook } from '$lib/pending';
 	import { signIn } from '$lib/state/account.svelte';
 	import { explain } from '$lib/workbooks/list.svelte';
 
@@ -17,7 +17,7 @@
 	const framed = window.top !== window.self;
 
 	function failed(error: unknown) {
-		if (error instanceof ApiError && error.code === 'permission_denied') denied = true;
+		if (notOwnSession(error)) denied = true;
 		else toast.danger(explain(error));
 	}
 

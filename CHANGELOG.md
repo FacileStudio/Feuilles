@@ -4,6 +4,13 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-11-14
+
+### Fixed
+
+- Confirm page: the sign-in-again notice shows only for the own-session refusal. Any other 403,
+  such as a demotion to viewer after the agent asked, now shows the server's message.
+
 ## [0.11.0] - 2026-11-14
 
 ### Added

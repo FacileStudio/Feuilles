@@ -4,6 +4,31 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-14
+
+### Added
+
+- Landing in French, English, Spanish and German. A signed-out visitor gets their browser's
+  language, or the one picked in the footer (kept in the `fc_locale` cookie); the signed-in app
+  stays in English
+- Landing: "Create a free account" as the main button with sign-in beside it, the suite
+  connections (Docs, Toile, Bulle), the plan cards from the suite catalog and a developer block
+  at the bottom (MCP, API reference, source, self-hosting page)
+- Landing tile "Ask Bulle": Bulle fills in a total on request (Pro plan)
+
+### Changed
+
+- Landing copy leads with what a team gets: shared budgets and lists, Excel files and formulas.
+  IronCalc and MCP moved to the developer block; title, description, link preview image and
+  web manifest follow
+- The "Agents ask first" MCP tile left the demo tiles; its approval step is now a line in the
+  developer block
+- Demo tiles move with transform and opacity only
+
+### Security
+
+- The report-only CSP allows `connect-src https://api-ardoise.facile.studio` for the plan catalog
+
 ## [0.13.1] - 2026-11-14
 
 ### Fixed

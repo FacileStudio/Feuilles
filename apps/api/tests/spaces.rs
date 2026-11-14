@@ -22,5 +22,5 @@ async fn spaces_lists_only_the_callers_own() {
     assert_eq!((status, me["id"].as_i64()), (StatusCode::OK, Some(member.user_id)));
     assert_eq!(call(&app.router, Method::GET, "/api/auth/me", None, None).await.0, StatusCode::UNAUTHORIZED);
     let (status, session) = call(&app.router, Method::GET, "/api/auth/session", None, None).await;
-    assert_eq!((status, session), (StatusCode::OK, json!({"user": null})));
+    assert_eq!((status, session), (StatusCode::OK, json!({"user": null, "bulle_url": "https://bulle.facile.studio"})));
 }

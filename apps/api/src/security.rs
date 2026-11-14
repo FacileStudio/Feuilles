@@ -8,10 +8,13 @@ use axum::response::Response;
 use tronc::http::{SecurityConfig, SecurityOverride, SecurityOverrideConfig, Sources, security_override};
 use tronc::mcp::PENDING_PATH;
 
+/// The origin the landing page's plan cards read the suite catalog from.
+const PLAN_CATALOG: &str = "https://api-ardoise.facile.studio";
+
 /// tronc's policy plus what the Feuilles client needs: `wasm-unsafe-eval` to compile the
 /// IronCalc engine, Vision's tracker script, the hashes of the inline scripts adapter-static
-/// writes, and `frame-src` for the Bulle sidebar at `bulle`. The policy stays report-only, like
-/// every suite app's.
+/// writes, `frame-src` for the Bulle sidebar at `bulle`, and `connect-src` for the plan catalog.
+/// The policy stays report-only, like every suite app's.
 pub fn config(client_dir: &Path, bulle: &str) -> SecurityConfig {
     let mut scripts = vec!["'wasm-unsafe-eval'".to_owned(), "https://vision.facile.studio".to_owned()];
     if tronc::spa::available(client_dir) {
@@ -20,7 +23,11 @@ pub fn config(client_dir: &Path, bulle: &str) -> SecurityConfig {
             Err(error) => tracing::error!(%error, "failed to hash the client's inline scripts"),
         }
     }
-    let sources = Sources::from([("script-src".to_owned(), scripts), ("frame-src".to_owned(), vec![bulle.to_owned()])]);
+    let sources = Sources::from([
+        ("script-src".to_owned(), scripts),
+        ("frame-src".to_owned(), vec![bulle.to_owned()]),
+        ("connect-src".to_owned(), vec![PLAN_CATALOG.to_owned()]),
+    ]);
     SecurityConfig { csp_sources: sources, ..SecurityConfig::default() }
 }
 
@@ -107,6 +114,7 @@ mod tests {
         assert!(!policy.contains("localhost"), "{policy}");
         let report = page.headers()["content-security-policy-report-only"].to_str().expect("report-only").to_owned();
         assert!(report.contains("frame-src https://bulle.test"), "{report}");
+        assert!(report.contains("connect-src 'self' https://api-ardoise.facile.studio"), "{report}");
         assert!(page.headers().get("x-frame-options").is_none());
         for confirm in ["/pending?action=a1", "/pending/"] {
             let page = headers(confirm).await;

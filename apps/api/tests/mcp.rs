@@ -2,6 +2,10 @@ mod common;
 
 use std::sync::Arc;
 
+use api::engine::CellWrite;
+use api::hub::Change;
+use api::modules::workbooks::types::CreateWorkbook;
+use api::modules::workbooks::{actions, model};
 use common::agent::{args, mounted, token};
 use common::sheet::init;
 use common::ws::{Event, connect};
@@ -10,14 +14,53 @@ use serde_json::{Value, json};
 use tronc::mcp::rmcp::model::CallToolRequestParams;
 use tronc::mcptest;
 
+async fn seq(pool: &sqlx::PgPool, id: &str) -> i64 {
+    sqlx::query_scalar("SELECT seq FROM workbooks WHERE id = $1::uuid").bind(id).fetch_one(pool).await.expect("seq")
+}
+
+async fn target(state: api::state::AppState, user: i64, extra: Value) -> mcptest::Target {
+    let me = porte::Identity { user_id: user, ..porte::Identity::default() };
+    let body = CreateWorkbook { title: "Target".into(), space_id: None, locale: None, timezone: None, language: None };
+    let id = actions::create(&state, &me, &body).await.expect("workbook").id;
+    let cells = (1..=3).map(|row| Change::Cell(CellWrite { sheet: 0, row, column: 1, input: "x".into() }));
+    let changes = cells.chain([Change::AddSheet(None)]).collect();
+    model::change(&state, id, user, changes).await.expect("cells and a sheet");
+    let id = id.to_string();
+    let mut input = json!({"workbook_id": id, "sheet": 0});
+    input.as_object_mut().expect("object").extend(extra.as_object().expect("object").clone());
+    let before = seq(&state.pool, &id).await;
+    let runs = move || -> mcptest::Fut<usize> {
+        let (pool, id) = (state.pool.clone(), id.clone());
+        Box::pin(async move { (seq(&pool, &id).await - before) as usize })
+    };
+    mcptest::Target { args: args(input), runs: Arc::new(runs) }
+}
+
+fn case(state: &api::state::AppState, user: i64, tool: &str, extra: Value) -> mcptest::ConfirmCase {
+    let state = state.clone();
+    let setup = move || -> mcptest::Fut<mcptest::Target> { Box::pin(target(state.clone(), user, extra.clone())) };
+    mcptest::ConfirmCase { tool: tool.into(), setup: Arc::new(setup) }
+}
+
 #[tokio::test(flavor = "multi_thread")]
-async fn the_endpoint_passes_the_tronc_conformance_kit() {
+async fn the_endpoint_passes_the_tronc_conformance_kit_with_its_deletes_confirmed() {
     let Some(state) = state().await else { return };
-    let me = person(&state).await;
     let addr = mounted(&state).await;
-    let user = me.user_id.to_string();
-    let token: mcptest::TokenFn = Arc::new(move |scopes| format!("{user}|feuilles.read,{}", scopes.join(",")));
-    mcptest::run(&mcptest::Config { url: format!("http://{addr}/mcp"), token, confirm: Vec::new() }).await;
+    let cases = [
+        ("feuilles_delete_sheet", json!({})),
+        ("feuilles_delete_rows", json!({"at": 1, "count": 2})),
+        ("feuilles_delete_columns", json!({"at": 1})),
+        ("feuilles_clear_range", json!({"range": "A1:A3"})),
+    ];
+    for (tool, extra) in cases {
+        let user = person(&state).await.user_id;
+        let token: mcptest::TokenFn = Arc::new(move |scopes| match scopes.is_empty() {
+            true => format!("{user}|feuilles.read,feuilles.write"),
+            false => format!("{user}|feuilles.read,{}", scopes.join(",")),
+        });
+        let confirm = vec![case(&state, user, tool, extra)];
+        mcptest::run(&mcptest::Config { url: format!("http://{addr}/mcp"), token, confirm }).await;
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]

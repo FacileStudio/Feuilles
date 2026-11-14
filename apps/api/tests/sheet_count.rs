@@ -1,6 +1,6 @@
 mod common;
 
-use common::agent::{args, mounted, token};
+use common::agent::{agreeing, args, mounted, token};
 use common::sheet::init;
 use common::web::{call, create};
 use common::ws::{Event, connect};
@@ -44,7 +44,8 @@ async fn the_count_follows_rest_mcp_and_the_room() {
     let client = token(addr, me.user_id, "feuilles.read,feuilles.write").await;
     mcptest::call(&client, "feuilles_add_sheet", args(json!({"workbook_id": id, "name": "Notes"}))).await;
     assert_eq!(stored(pool, &id).await, Some(2));
-    mcptest::call(&client, "feuilles_delete_sheet", args(json!({"workbook_id": id, "sheet": "Notes"}))).await;
+    let agreed = agreeing(addr, me.user_id).await;
+    mcptest::call(&agreed, "feuilles_delete_sheet", args(json!({"workbook_id": id, "sheet": "Notes"}))).await;
     assert_eq!(stored(pool, &id).await, Some(1));
     let mut browser = connect(addr, &id, &me.token).await;
     let (_, _, mut model) = init(&mut browser).await;

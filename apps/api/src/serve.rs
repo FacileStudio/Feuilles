@@ -7,11 +7,12 @@ use std::time::Duration;
 
 use sqlx::PgPool;
 use tokio_util::sync::CancellationToken;
+use tronc::mcp::{AppConfig, PostgresPending, keep_pruned};
 
 use crate::auth::Kits;
 use crate::env::Config;
 use crate::hub::{Hub, Limits};
-use crate::mcp::{Mcp, porte_verifier};
+use crate::mcp::porte_verifier;
 use crate::modules::live;
 use crate::router::{self, Options};
 use crate::state::AppState;
@@ -28,7 +29,7 @@ pub fn fail(step: &str, error: &dyn std::fmt::Display) -> ExitCode {
 }
 
 /// Steps 3 to 9 of the boot: database, migrations, kits, background tasks (trash purge, sheet
-/// count backfill, directory sync), router, serve.
+/// count backfill, pending-action prune, directory sync), router, serve.
 pub async fn run(config: Config, args: Vec<String>) -> ExitCode {
     let pool = match PgPool::connect(&config.core.database_url).await {
         Ok(pool) => pool,
@@ -49,7 +50,8 @@ pub async fn run(config: Config, args: Vec<String>) -> ExitCode {
         Ok(kits) => kits,
         Err(error) => return fail("build the auth kits", &error),
     };
-    let state = AppState::new(pool, config.porte.issuer.clone(), kits, hub.clone());
+    let mut state = AppState::new(pool, config.porte.issuer.clone(), kits, hub.clone());
+    state.bulle = config.bulle.clone();
     let shutdown = CancellationToken::new();
     spawn_tasks(&state, &config, &shutdown);
     let app = match app(&config, state).await {
@@ -70,24 +72,31 @@ async fn operator(args: &[String], pool: &PgPool) -> Option<ExitCode> {
 
 async fn app(config: &Config, state: AppState) -> Result<axum::Router, String> {
     let mut http = tronc::http::Config::from_core(&config.core);
-    http.security = security::config(&config.client_dir);
+    http.security = security::config(&config.client_dir, &config.bulle);
     let mcp = mcp(config, &state.kits).await.map_err(|e| format!("build the MCP verifier: {e}"))?;
     let production = config.core.is_production();
     router::build_router(state, Options { http, client_dir: config.client_dir.clone(), mcp, production })
 }
 
-async fn mcp(config: &Config, kits: &Kits) -> Result<Option<Mcp>, porte::ConfigError> {
+async fn mcp(config: &Config, kits: &Kits) -> Result<Option<AppConfig>, porte::ConfigError> {
     if config.mcp_resource.is_empty() {
         return Ok(None);
     }
     let verifier = porte_verifier(&config.porte, kits, &config.mcp_resource).await?;
-    let (resource, issuer) = (config.mcp_resource.clone(), config.porte.issuer.clone());
-    Ok(Some(Mcp { resource, issuer, verifier }))
+    let mut app = AppConfig::new(config.mcp_resource.clone(), config.porte.issuer.clone(), verifier);
+    app.state_key = crate::mcp::state_key(&config.token_key);
+    Ok(Some(app))
 }
 
 fn spawn_tasks(state: &AppState, config: &Config, shutdown: &CancellationToken) {
     tokio::spawn(purge::run(state.clone(), shutdown.clone()));
     tokio::spawn(backfill::run(state.pool.clone(), shutdown.clone()));
+    let pruning = keep_pruned(PostgresPending::new(state.pool.clone()), Duration::ZERO, Duration::ZERO);
+    let stopped = shutdown.clone();
+    tokio::spawn(async move {
+        stopped.cancelled().await;
+        pruning.abort();
+    });
     if !config.porte.enabled() {
         tracing::warn!("OIDC_ISSUER is not set: no sign-in, no directory sync, no deletions");
         return;

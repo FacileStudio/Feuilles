@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
-use tronc::mcp::{self, Answer, Call, Tool, ToolError};
+use tronc::mcp::{self, Annotations, Answer, Call, Tool, ToolError};
 use uuid::Uuid;
 
-use super::{READ, identity, spec, with, workbook};
+use super::{identity, spec, with, workbook};
 use crate::engine::{Area, Cell, SheetInfo, SheetRef, parse_range, sheet_index};
 use crate::modules::workbooks::actions;
 use crate::modules::workbooks::model::{self, MAX_READ_CELLS};
@@ -79,7 +79,7 @@ pub fn tools(state: &AppState) -> Vec<Tool> {
                 "feuilles_list_workbooks",
                 "List workbooks",
                 "Call first to find a workbook id. Lists the workbooks of a space, or the person's own, by pages.",
-                READ,
+                Annotations::READ,
             ),
             with(state, list),
         ),
@@ -88,7 +88,7 @@ pub fn tools(state: &AppState) -> Vec<Tool> {
                 "feuilles_get_workbook",
                 "Get a workbook",
                 "Call before reading or editing a workbook: its title, sheets, and the used range of each sheet.",
-                READ,
+                Annotations::READ,
             ),
             with(state, get),
         ),
@@ -97,7 +97,7 @@ pub fn tools(state: &AppState) -> Vec<Tool> {
                 "feuilles_read_range",
                 "Read a range",
                 "Call to read cells: inputs, values and displayed values of a range, by pages of rows.",
-                READ,
+                Annotations::READ,
             ),
             with(state, read_range),
         ),
@@ -109,15 +109,14 @@ async fn list(state: AppState, call: Call, input: ListInput) -> Result<Answer<Li
     if !(1..=MAX_LIST).contains(&limit) {
         return Err(ToolError::new(format!("limit must be 1 to {MAX_LIST}")));
     }
-    let start = mcp::decode_cursor::<usize>(input.cursor.as_deref().unwrap_or_default())?.unwrap_or(0);
+    let at = input.cursor.unwrap_or_default();
     let all = actions::list(&state, &identity(&call)?, input.space_id.as_deref(), false).await?;
-    let mut workbooks: Vec<Workbook> = all.into_iter().skip(start).collect();
-    let more = workbooks.len();
-    workbooks.truncate(limit);
-    let fitted = mcp::fit_count(workbooks.len(), |n| mcp::encoded_size(&workbooks[..n])).max(1).min(workbooks.len());
-    workbooks.truncate(fitted);
-    let next_cursor = (fitted < more).then(|| mcp::encode_cursor(&(start + fitted)));
-    Ok(ListOutput { workbooks, next_cursor }.into())
+    let start = mcp::offset(&at)?.min(all.len());
+    let (page, _) = mcp::page(&all, &at, limit)?;
+    let fitted = mcp::fit_count(page.len(), |n| mcp::encoded_size(&page[..n])).max(1).min(page.len());
+    let workbooks = page[..fitted].to_vec();
+    let next = mcp::cursor(start + fitted, all.len());
+    Ok(ListOutput { workbooks, next_cursor: (!next.is_empty()).then_some(next) }.into())
 }
 
 async fn get(state: AppState, call: Call, input: GetInput) -> Result<Answer<Workbook>, ToolError> {

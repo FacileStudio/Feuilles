@@ -18,7 +18,11 @@ const fn auth(method: utoipa::openapi::path::HttpMethod, path: &'static str, sum
     }
 }
 
-/// porte's routes, the Registre nudges and `/version`.
+const OWN: &str = "Only a browser login's own session cookie, with `X-Facile-CSRF`: a bearer, a CLI, device or named \
+    API token (even sent as the cookie), a cookie from before porte-rs 0.8.0, or a delegated agent gets 403 \
+    `permission_denied`. 404 when MCP is off.";
+
+/// porte's routes, the Registre nudges, the MCP confirm page's API and `/version`.
 pub const ROUTES: &[Route] = &[
     Route {
         answer: (200, Object),
@@ -63,7 +67,8 @@ pub const ROUTES: &[Route] = &[
     Route { answer: (200, Me), errors: &[401], ..auth(Get, "/api/auth/me", "The signed-in account") },
     Route {
         answer: (200, Session),
-        description: "Always 200. `{\"user\":{\"id\",\"email\",\"name\",\"avatar_url\"?}}`, or `{\"user\":null}` without a session.",
+        description: "Always 200. `{\"user\":{\"id\",\"email\",\"name\",\"avatar_url\"?},\"bulle_url\"}`, `user` null \
+            without a session. `bulle_url` is the origin of the Bulle sidebar.",
         ..auth(Get, "/api/auth/session", "The account, or null")
     },
     Route {
@@ -81,6 +86,27 @@ pub const ROUTES: &[Route] = &[
         ..auth(Post, "/api/registre/deletions", "Account deletion push")
     },
     Route {
+        tag: "MCP",
+        answer: (200, Object),
+        errors: &[401, 403],
+        description: OWN,
+        ..auth(Get, "/api/mcp/pending", "List actions waiting for confirmation")
+    },
+    Route {
+        tag: "MCP",
+        answer: (200, Object),
+        errors: &[401, 403, 404, 412],
+        description: OWN,
+        ..auth(Post, "/api/mcp/pending/{id}/confirm", "Confirm an action")
+    },
+    Route {
+        tag: "MCP",
+        answer: (200, Object),
+        errors: &[401, 403, 404],
+        description: OWN,
+        ..auth(Post, "/api/mcp/pending/{id}/dismiss", "Dismiss an action")
+    },
+    Route {
         tag: "Meta",
         answer: (200, Version),
         description: "`engine` is the IronCalc version the browser engine must equal.",
@@ -89,8 +115,9 @@ pub const ROUTES: &[Route] = &[
 ];
 
 const TOOLS: &str = "Streamable HTTP, stateless. A Registre bearer token with `feuilles.read`, and `feuilles.write` for \
-    `feuilles_write_cells`, `feuilles_create_workbook` and `feuilles_add_sheet`. Read tools: `feuilles_list_workbooks`, \
-    `feuilles_get_workbook`, `feuilles_read_range`. Never plan-gated.";
+    every tool but the reads (`feuilles_list_workbooks`, `feuilles_get_workbook`, `feuilles_read_range`). \
+    `feuilles_delete_sheet`, `feuilles_delete_rows`, `feuilles_delete_columns` and `feuilles_clear_range` ask the person \
+    first: `input_required`, or `pending_confirmation` with a `confirm_url` to `/pending`. Never plan-gated.";
 
 /// The MCP routes, mounted when `MCP_RESOURCE` is set.
 pub const MCP: &[Route] = &[

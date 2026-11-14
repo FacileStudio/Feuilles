@@ -3,9 +3,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use api::mcp::Mcp;
 use serde_json::Value;
-use tronc::mcp::{TokenInfo, Verifier, VerifyError, VerifyFuture};
+use tronc::mcp::rmcp::model::ElicitationAction;
+use tronc::mcp::{AppConfig, TokenInfo, Verifier, VerifyError, VerifyFuture};
 use tronc::mcptest::{self, ClientOptions};
 
 use super::serve_with;
@@ -28,16 +28,18 @@ impl Verifier for DevTokens {
     }
 }
 
-pub async fn mounted(state: &api::state::AppState) -> SocketAddr {
-    serve_with(state.clone(), |addr| api::router::Options {
-        mcp: Some(Mcp {
-            resource: format!("http://{addr}/mcp"),
-            issuer: super::ISSUER.into(),
-            verifier: Arc::new(DevTokens),
+pub fn options(addr: SocketAddr) -> api::router::Options {
+    api::router::Options {
+        mcp: Some(AppConfig {
+            state_key: api::mcp::state_key("test-key"),
+            ..AppConfig::new(format!("http://{addr}/mcp"), super::ISSUER, Arc::new(DevTokens))
         }),
         ..Default::default()
-    })
-    .await
+    }
+}
+
+pub async fn mounted(state: &api::state::AppState) -> SocketAddr {
+    serve_with(state.clone(), options).await
 }
 
 pub fn args(value: Value) -> tronc::mcp::rmcp::model::JsonObject {
@@ -46,4 +48,10 @@ pub fn args(value: Value) -> tronc::mcp::rmcp::model::JsonObject {
 
 pub async fn token(addr: SocketAddr, user: i64, scopes: &str) -> mcptest::Client {
     mcptest::connect(&format!("http://{addr}/mcp"), &format!("{user}|{scopes}"), ClientOptions::default()).await
+}
+
+pub async fn agreeing(addr: SocketAddr, user: i64) -> mcptest::Client {
+    let accept = mcptest::answering(ElicitationAction::Accept, Arc::default());
+    let options = ClientOptions { elicit: Some(accept), version: None };
+    mcptest::connect(&format!("http://{addr}/mcp"), &format!("{user}|feuilles.read,feuilles.write"), options).await
 }

@@ -1,6 +1,6 @@
 mod common;
 
-use common::agent::{args, mounted, token};
+use common::agent::{agreeing, args, mounted, token};
 use common::sheet::init;
 use common::ws::{Event, connect};
 use common::{person, space, state};
@@ -19,16 +19,13 @@ async fn every_tool_declares_honest_hints() {
         let a = tool.annotations.clone().expect("annotations");
         (a.read_only_hint, a.destructive_hint, a.idempotent_hint, a.open_world_hint)
     };
-    let (read, add, arrange) = ((true, false, true), (false, false, false), (false, false, true));
+    let (read, add) = ((true, false, true), (false, false, false));
     let (overwrite, remove) = ((false, true, true), (false, true, false));
     let expected = [
         (["feuilles_list_workbooks", "feuilles_get_workbook", "feuilles_read_range"].as_slice(), read),
         (&["feuilles_create_workbook", "feuilles_add_sheet", "feuilles_insert_rows", "feuilles_insert_columns"], add),
-        (&["feuilles_update_sheet"], arrange),
-        (
-            &["feuilles_write_cells", "feuilles_clear_range", "feuilles_update_workbook", "feuilles_delete_workbook"],
-            overwrite,
-        ),
+        (&["feuilles_write_cells", "feuilles_clear_range", "feuilles_update_sheet"], overwrite),
+        (&["feuilles_update_workbook", "feuilles_delete_workbook"], overwrite),
         (&["feuilles_delete_sheet", "feuilles_delete_rows", "feuilles_delete_columns"], remove),
     ];
     for (names, (r, d, i)) in expected {
@@ -73,7 +70,7 @@ async fn sheets_are_renamed_reordered_and_deleted_live() {
     let Some(state) = state().await else { return };
     let me = person(&state).await;
     let addr = mounted(&state).await;
-    let client = token(addr, me.user_id, "feuilles.read,feuilles.write").await;
+    let client = agreeing(addr, me.user_id).await;
     let created = mcptest::call(&client, "feuilles_create_workbook", args(json!({"title": "Tabs"}))).await;
     let id = mcptest::decode::<Value>(&created)["id"].as_str().expect("id").to_owned();
     mcptest::call(&client, "feuilles_add_sheet", args(json!({"workbook_id": id, "name": "Notes"}))).await;
@@ -96,7 +93,7 @@ async fn sheets_are_renamed_reordered_and_deleted_live() {
 async fn rows_and_columns_are_inserted_and_deleted_and_ranges_cleared() {
     let Some(state) = state().await else { return };
     let me = person(&state).await;
-    let client = token(mounted(&state).await, me.user_id, "feuilles.read,feuilles.write").await;
+    let client = agreeing(mounted(&state).await, me.user_id).await;
     let created = mcptest::call(&client, "feuilles_create_workbook", args(json!({"title": "Grid"}))).await;
     let id = mcptest::decode::<Value>(&created)["id"].as_str().expect("id").to_owned();
     let writes =

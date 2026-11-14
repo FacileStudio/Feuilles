@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
-use tronc::mcp::{self, Answer, Call, Tool, ToolError};
+use tronc::mcp::{self, Annotations, Answer, Call, Tool, ToolError};
 use uuid::Uuid;
 
-use super::{ADD, OVERWRITE, identity, spec, with, workbook};
+use super::{identity, spec, with, workbook};
 use crate::engine::{CellWrite, SheetInfo};
 use crate::hub::Change;
 use crate::modules::workbooks::actions;
@@ -58,7 +58,7 @@ pub fn tools(state: &AppState) -> Vec<Tool> {
                 "feuilles_write_cells",
                 "Write cells",
                 "Call to set cell inputs, values or formulas; it overwrites what the cells held. Live for everyone.",
-                OVERWRITE,
+                Annotations::OVERWRITE,
             ),
             with(state, write_cells),
         ),
@@ -67,12 +67,17 @@ pub fn tools(state: &AppState) -> Vec<Tool> {
                 "feuilles_create_workbook",
                 "Create a workbook",
                 "Call to start a new workbook. It has one empty sheet.",
-                ADD,
+                Annotations::ADD,
             ),
             with(state, create),
         ),
         mcp::tool(
-            spec("feuilles_add_sheet", "Add a sheet", "Call to add a sheet at the end of a workbook.", ADD),
+            spec(
+                "feuilles_add_sheet",
+                "Add a sheet",
+                "Call to add a sheet at the end of a workbook.",
+                Annotations::ADD,
+            ),
             with(state, add_sheet),
         ),
     ]

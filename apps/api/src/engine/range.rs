@@ -4,6 +4,8 @@ use tronc::Error;
 pub const MAX_ROW: i32 = 1_048_576;
 /// The last column IronCalc addresses (`XFD`).
 pub const MAX_COLUMN: i32 = 16_384;
+/// The most cells of data one clear may cover.
+pub const MAX_CLEAR_CELLS: i64 = 1_000_000;
 
 /// A rectangle of cells, 1-based and inclusive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,21 +64,39 @@ pub fn column_name(column: i32) -> String {
     letters.iter().rev().collect()
 }
 
+/// The part of `area` holding data inside `used`, or `None` when nothing there holds data;
+/// refuses a span over [`MAX_CLEAR_CELLS`] cells, so a clear can be refused before anyone is asked.
+pub fn clear_span(area: Area, used: Option<Area>) -> Result<Option<Area>, Error> {
+    let Some(used) = used else { return Ok(None) };
+    let span = Area {
+        top: area.top.max(used.top),
+        left: area.left.max(used.left),
+        bottom: area.bottom.min(used.bottom),
+        right: area.right.min(used.right),
+    };
+    if span.top > span.bottom || span.left > span.right {
+        return Ok(None);
+    }
+    match span.cells() > MAX_CLEAR_CELLS {
+        true => Err(Error::invalid(format!(
+            "the range covers {} cells of data, more than {MAX_CLEAR_CELLS}; clear a narrower range",
+            span.cells()
+        ))),
+        false => Ok(Some(span)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn ranges_parse_in_any_corner_order() {
+    fn ranges_parse_in_any_corner_order_and_bad_ones_are_refused() {
         let area = parse_range("d20:A1").expect("range");
         assert_eq!(area, Area { top: 1, left: 1, bottom: 20, right: 4 });
         assert_eq!(area.label(), "A1:D20");
         assert_eq!(area.cells(), 80);
         assert_eq!(parse_range("B3").expect("cell").label(), "B3:B3");
-    }
-
-    #[test]
-    fn bad_ranges_are_refused() {
         for text in ["", "A", "1", "A0", "XFE1", "A1048577", "A1:", "ABCD1", "A-1"] {
             assert!(parse_range(text).is_err(), "{text:?} parsed");
         }

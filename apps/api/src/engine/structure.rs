@@ -1,14 +1,12 @@
 use ironcalc::base::expressions::types::Area as Span;
 use tronc::Error;
 
+use super::range::clear_span;
 use super::sheets::{SheetRef, sheet_index, sheet_names};
 use super::{Area, MAX_COLUMN, MAX_ROW, Model};
 
 /// The most rows or columns one insert or delete touches.
 pub const MAX_LINES: i32 = 10_000;
-
-/// The most cells of data one clear may cover.
-pub const MAX_CLEAR_CELLS: i64 = 1_000_000;
 
 /// Rows or columns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,28 +43,46 @@ pub struct Edit {
     pub kind: EditKind,
 }
 
+/// Resolves the sheet `edit` names among `names` and refuses what [`apply_edit`] would refuse,
+/// without a model: an unknown sheet, the last sheet, an empty name, a position or a span out of
+/// bounds.
+pub fn check_edit(names: &[String], edit: &Edit) -> Result<u32, Error> {
+    let sheet = sheet_index(names, &edit.sheet)?;
+    match &edit.kind {
+        EditKind::Rename(name) => check_name(name).map(drop),
+        EditKind::Move(to) => check_position(*to, names.len()).map(drop),
+        EditKind::DeleteSheet if names.len() == 1 => {
+            Err(Error::failed("a workbook keeps at least one sheet; add another sheet first"))
+        }
+        EditKind::Insert { axis, at, count } | EditKind::Delete { axis, at, count } => {
+            lines(*at, *count, last(*axis)).map(drop)
+        }
+        EditKind::DeleteSheet | EditKind::Clear(_) => Ok(()),
+    }?;
+    Ok(sheet)
+}
+
 /// Applies `edit`. A refused edit can leave `model` half-written: drop it then.
 pub fn apply_edit(model: &mut Model, edit: &Edit) -> Result<(), Error> {
-    let names = sheet_names(model);
-    let sheet = sheet_index(&names, &edit.sheet)?;
+    let sheet = check_edit(&sheet_names(model), edit)?;
     let done = match &edit.kind {
-        EditKind::Rename(name) => model.rename_sheet(sheet, &check_name(name)?),
-        EditKind::Move(to) => model.move_sheet(sheet, check_position(*to, names.len())?),
-        EditKind::DeleteSheet if names.len() == 1 => {
-            return Err(Error::failed("a workbook keeps at least one sheet; add another sheet first"));
-        }
+        EditKind::Rename(name) => model.rename_sheet(sheet, name.trim()),
+        EditKind::Move(to) => model.move_sheet(sheet, *to),
         EditKind::DeleteSheet => model.delete_sheet(sheet),
-        EditKind::Insert { axis: Axis::Rows, at, count } => model.insert_rows(sheet, *at, lines(*at, *count, MAX_ROW)?),
-        EditKind::Insert { axis: Axis::Columns, at, count } => {
-            model.insert_columns(sheet, *at, lines(*at, *count, MAX_COLUMN)?)
-        }
-        EditKind::Delete { axis: Axis::Rows, at, count } => model.delete_rows(sheet, *at, lines(*at, *count, MAX_ROW)?),
-        EditKind::Delete { axis: Axis::Columns, at, count } => {
-            model.delete_columns(sheet, *at, lines(*at, *count, MAX_COLUMN)?)
-        }
+        EditKind::Insert { axis: Axis::Rows, at, count } => model.insert_rows(sheet, *at, *count),
+        EditKind::Insert { axis: Axis::Columns, at, count } => model.insert_columns(sheet, *at, *count),
+        EditKind::Delete { axis: Axis::Rows, at, count } => model.delete_rows(sheet, *at, *count),
+        EditKind::Delete { axis: Axis::Columns, at, count } => model.delete_columns(sheet, *at, *count),
         EditKind::Clear(area) => return clear(model, sheet, *area),
     };
     done.map_err(Error::invalid)
+}
+
+fn last(axis: Axis) -> i32 {
+    match axis {
+        Axis::Rows => MAX_ROW,
+        Axis::Columns => MAX_COLUMN,
+    }
 }
 
 fn check_name(name: &str) -> Result<String, Error> {
@@ -95,24 +111,15 @@ fn lines(at: i32, count: i32, last: i32) -> Result<i32, Error> {
 
 fn clear(model: &mut Model, sheet: u32, area: Area) -> Result<(), Error> {
     let worksheet = model.get_model().workbook.worksheet(sheet).map_err(Error::invalid)?;
-    if worksheet.sheet_data.is_empty() {
-        return Ok(());
-    }
-    let used = worksheet.dimension();
-    let top = area.top.max(used.min_row);
-    let left = area.left.max(used.min_column);
-    let (bottom, right) = (area.bottom.min(used.max_row), area.right.min(used.max_column));
-    if top > bottom || left > right {
-        return Ok(());
-    }
-    let span = Area { top, left, bottom, right };
-    if span.cells() > MAX_CLEAR_CELLS {
-        return Err(Error::invalid(format!(
-            "the range covers {} cells of data, more than {MAX_CLEAR_CELLS}; clear a narrower range",
-            span.cells()
-        )));
-    }
-    let span = Span { sheet, row: top, column: left, width: right - left + 1, height: bottom - top + 1 };
+    let used = (!worksheet.sheet_data.is_empty()).then(|| worksheet.dimension()).map(|d| Area {
+        top: d.min_row,
+        left: d.min_column,
+        bottom: d.max_row,
+        right: d.max_column,
+    });
+    let Some(span) = clear_span(area, used)? else { return Ok(()) };
+    let (width, height) = (span.right - span.left + 1, span.bottom - span.top + 1);
+    let span = Span { sheet, row: span.top, column: span.left, width, height };
     model.range_clear_contents(&span).map_err(Error::invalid)
 }
 

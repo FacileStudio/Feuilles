@@ -15,6 +15,9 @@
 	import { explain } from '$lib/workbooks/list.svelte';
 	import { getColor } from '$lib/grid/canvas/palette';
 	import { connectionState, noticeText } from '$lib/workbooks/status';
+	import BulleSidebar from '$lib/components/BulleSidebar.svelte';
+	import { DEFAULT_ASSISTANT, rememberSidebar, sidebarOpen } from '$lib/bulle';
+	import { account } from '$lib/state/account.svelte';
 
 	type Phase =
 		| { kind: 'loading' }
@@ -27,6 +30,18 @@
 	let workbook = $state<Workbook | null>(null);
 	let session = $state.raw<Session | null>(null);
 	let renameOpen = $state(false);
+	let assistant = $state(DEFAULT_ASSISTANT);
+	let bulleOpen = $state(false);
+
+	const owner = $derived(account.user?.email ?? null);
+
+	$effect(() => {
+		if (owner !== null) bulleOpen = sidebarOpen(owner);
+	});
+
+	$effect(() => {
+		if (owner !== null) rememberSidebar(owner, bulleOpen);
+	});
 
 	async function open(id: string, claim: Promise<OriginClaim>): Promise<Session | null> {
 		const [meta, server] = await Promise.all([backend.get(id), backend.version().catch(() => null), loadEngine()]);
@@ -105,7 +120,7 @@
 
 <svelte:head><title>{workbook?.title ?? 'Workbook'} · Feuilles</title></svelte:head>
 
-<div class="flex h-full min-h-0 flex-col">
+<div class="flex h-full min-h-0 flex-col {bulleOpen && !embed ? 'lg:pr-[400px]' : ''}">
 	<header class="flex shrink-0 items-center gap-2 px-3 {embed ? 'min-h-11 py-1' : 'min-h-14 py-2 sm:gap-3'}">
 		{#if embed}
 			<span class="min-w-0 truncate text-fc-sm font-semibold text-fc-fg">{workbook?.title ?? ''}</span>
@@ -133,6 +148,19 @@
 					</Button>
 				</Tooltip>
 			{:else if workbook}
+				<Tooltip text="Ask {assistant} about this workbook" class="contents">
+					<Button
+						variant="ghost"
+						size="sm"
+						icon={icons.ideas}
+						aria-pressed={bulleOpen}
+						class={bulleOpen ? 'bg-fc-surface' : ''}
+						data-testid="bulle-toggle"
+						onclick={() => (bulleOpen = !bulleOpen)}
+					>
+						<span class="max-sm:sr-only">{assistant}</span>
+					</Button>
+				</Tooltip>
 				<Menu label="Download" items={downloads} align="end">
 					{#snippet trigger()}<Icon icon={icons.download} size={18} />{/snippet}
 				</Menu>
@@ -182,5 +210,15 @@
 		{/if}
 	{/if}
 </div>
+
+{#if workbook && !embed}
+	<BulleSidebar
+		bind:open={bulleOpen}
+		origin={account.bulle}
+		{assistant}
+		page={{ app: 'feuilles', id: workbook.id, title: workbook.title, url: `${page.url.origin}/w/${workbook.id}` }}
+		onready={(name) => (assistant = name)}
+	/>
+{/if}
 
 <RenameModal bind:open={renameOpen} title={workbook?.title ?? ''} onSave={rename} />

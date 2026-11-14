@@ -1,8 +1,8 @@
 use serde::Deserialize;
-use tronc::mcp::{self, Answer, Call, Tool, ToolError};
+use tronc::mcp::{self, Annotations, Answer, Call, Tool, ToolError};
 use uuid::Uuid;
 
-use super::{OVERWRITE, spec, with, workbook};
+use super::{spec, with, workbook};
 use crate::modules::workbooks::actions;
 use crate::modules::workbooks::model;
 use crate::modules::workbooks::service::Access;
@@ -38,7 +38,7 @@ pub fn tools(state: &AppState) -> Vec<Tool> {
                 "feuilles_update_workbook",
                 "Rename or move a workbook",
                 "Call to rename a workbook or move it to another space. Moving it changes who can open it.",
-                OVERWRITE,
+                Annotations::OVERWRITE,
             ),
             with(state, update),
         ),
@@ -48,7 +48,7 @@ pub fn tools(state: &AppState) -> Vec<Tool> {
                 "Delete a workbook",
                 "Call only when the person asks to delete a workbook. It goes to the trash, closes for everyone, \
                  and is erased for good after 30 days; it can be restored from the trash in Feuilles until then.",
-                OVERWRITE,
+                Annotations::OVERWRITE,
             ),
             with(state, delete),
         ),

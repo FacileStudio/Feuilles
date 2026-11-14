@@ -56,6 +56,7 @@ filet check .
 | `OIDC_ISSUER` | Registre, `https://sso.facile.studio`, with `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` |
 | `PORTE_TOKEN_KEY` | Seals stored OIDC tokens |
 | `MCP_RESOURCE` | `https://feuilles.facile.studio/mcp`; mounts `/mcp` |
+| `BULLE_URL` | Optional; the Bulle sidebar origin, `https://bulle.facile.studio` by default |
 
 Full reference: [docs/configuration.md](docs/configuration.md).
 

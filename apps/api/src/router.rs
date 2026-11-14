@@ -4,8 +4,8 @@ use axum::Router;
 use axum::routing::get;
 use tronc::health::{self, Check};
 use tronc::http;
+use tronc::mcp::AppConfig;
 
-use crate::mcp::Mcp;
 use crate::state::AppState;
 use crate::{auth, modules, reference, security, version};
 
@@ -17,7 +17,7 @@ pub struct Options {
     /// The built SPA, served last when it exists.
     pub client_dir: PathBuf,
     /// `/mcp`, when `MCP_RESOURCE` is set.
-    pub mcp: Option<Mcp>,
+    pub mcp: Option<AppConfig>,
     /// Production: the client may not be framed from localhost.
     pub production: bool,
 }
@@ -32,6 +32,7 @@ pub fn api(state: &AppState) -> Router<AppState> {
         .merge(modules::spaces::routes(sessions))
         .merge(modules::workbooks::routes(sessions))
         .merge(modules::live::routes(sessions))
+        .merge(modules::pending::routes(state, sessions))
         .route("/registre/sync", state.kits.syncer.nudge_route())
         .route("/registre/deletions", state.kits.deletions.route())
         .fallback(|| async { tronc::Error::not_found("no such route") })
@@ -39,13 +40,15 @@ pub fn api(state: &AppState) -> Router<AppState> {
 }
 
 /// The whole app: health, `/version`, `/api`, then the SPA.
-pub fn build_router(state: AppState, options: Options) -> Result<Router, String> {
+pub fn build_router(mut state: AppState, options: Options) -> Result<Router, String> {
+    let mcp = options.mcp.map(|cfg| crate::mcp::app(&state, cfg)).transpose()?;
+    state.confirmations = mcp.as_ref().and_then(|app| app.confirmations.clone());
     let app = Router::new()
         .merge(health::routes(vec![Check::db(state.pool.clone())]))
         .route("/version", get(version::handler))
         .nest("/api", api(&state));
-    let app = app.with_state(state.clone()).merge(reference::routes(options.mcp.is_some())?);
-    let app = match options.mcp {
+    let app = app.with_state(state.clone()).merge(reference::routes(mcp.is_some())?);
+    let app = match mcp {
         Some(mcp) => crate::mcp::mount(app, &state, mcp)?,
         None => app,
     };

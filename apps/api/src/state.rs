@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use porte::spaces::Guard;
 use sqlx::PgPool;
+use tronc::mcp::Confirmations;
 
 use crate::auth::{Kits, Members};
 use crate::hub::Hub;
@@ -19,12 +20,17 @@ pub struct AppState {
     pub guard: Guard,
     /// The collaboration rooms.
     pub hub: Hub,
+    /// The MCP confirmation flow, when `/mcp` is on.
+    pub confirmations: Option<Confirmations>,
+    /// `BULLE_URL`: the origin the client frames the Bulle sidebar from.
+    pub bulle: String,
 }
 
 impl AppState {
     /// The state over `pool`, with membership answered from the app's own tables.
     pub fn new(pool: PgPool, issuer: String, kits: Kits, hub: Hub) -> AppState {
         let guard = Guard::new(Arc::new(Members::new(pool.clone())));
-        AppState { pool, issuer, kits, guard, hub }
+        let bulle = crate::env::DEFAULT_BULLE.to_owned();
+        AppState { pool, issuer, kits, guard, hub, confirmations: None, bulle }
     }
 }

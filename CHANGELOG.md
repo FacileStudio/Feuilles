@@ -4,6 +4,43 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+### Added
+
+- The Bulle sidebar on a workbook: the header button opens the person's assistant beside the
+  grid, framed from `BULLE_URL` (default `https://bulle.facile.studio`), and remembers per person
+  whether it was open. The CSP allows that origin in `frame-src`, and `GET /api/auth/session`
+  answers it as `bulle_url`
+- `/pending`: the page where a person confirms or declines an agent's request, over tronc's
+  `PendingPage` on the Go apps' paths: `GET /api/mcp/pending` (`{"actions":[...]}`, at most
+  100) and `POST /api/mcp/pending/{id}/confirm|dismiss`. Only a browser login's own session
+  cookie reaches it (`porte::mcpauth::require_own_session`); anything else gets 403 and the page
+  asks the person to sign in again in their browser, then comes back to the request
+- An hourly prune deletes agent actions resolved or expired more than 30 days ago
+
+### Changed
+
+- MCP: `feuilles_delete_sheet`, `feuilles_delete_rows`, `feuilles_delete_columns` and
+  `feuilles_clear_range` ask the person before they run, in the client when it can ask, or
+  through a `confirm_url` to `/pending`. Asking again for the same edit reuses the open request.
+  An unknown sheet, the last sheet, a span out of bounds or a clear over a million cells of data
+  is still refused at once, before anyone is asked
+- MCP: `feuilles_update_sheet` is marked destructive, like `feuilles_update_workbook`: a rename
+  overwrites the tab name. The tools use tronc's annotation presets and pager helpers
+- MCP: tool calls stay at 120 a minute per person, with a burst of 120 (was 30), tronc's `App`
+  default
+- `MCP_RESOURCE` needs `PORTE_TOKEN_KEY`, which keys the confirmations through
+  `tronc::mcp::state_key("feuilles", ...)`
+- `/pending` and its API answer `frame-ancestors 'none'`; the rest of the client stays framable
+  by Docs
+- tronc-rs v0.5.1 and porte-rs v0.8.1. A browser login's session token now starts with `b~`:
+  cookies minted before this release keep working everywhere but the confirm page
+- `docker-compose.yml` drops the swarm-only `deploy.update_config` and `deploy.restart_policy`;
+  both services keep `restart: unless-stopped`
+
+### Fixed
+
+- Erasing an account also erases its pending agent actions (`tronc::mcp::erase_pending`)
+
 ## [0.10.0] - 2026-11-14
 
 ### Added

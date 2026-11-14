@@ -1,10 +1,12 @@
 use serde::Deserialize;
-use tronc::mcp::{self, Answer, Call, Tool, ToolError};
+use tronc::mcp::{self, Annotations, Answer, Call, Tool, ToolError};
 use uuid::Uuid;
 
+use super::confirm::{Confirmed, ask};
+use super::planned::{Op, Planned};
 use super::write::{WriteOutput, change};
-use super::{ARRANGE, OVERWRITE, REMOVE, spec, with};
-use crate::engine::{Edit, EditKind, SheetRef, parse_range};
+use super::{spec, with};
+use crate::engine::{Edit, EditKind, SheetRef};
 use crate::hub::Change;
 use crate::state::AppState;
 
@@ -52,7 +54,7 @@ pub fn tools(state: &AppState) -> Vec<Tool> {
                 "feuilles_update_sheet",
                 "Rename or move a sheet",
                 "Call to rename a sheet or change its tab order.",
-                ARRANGE,
+                Annotations::OVERWRITE,
             ),
             with(state, update),
         ),
@@ -60,8 +62,8 @@ pub fn tools(state: &AppState) -> Vec<Tool> {
             spec(
                 "feuilles_delete_sheet",
                 "Delete a sheet",
-                "Call only when the person asks to delete a sheet and its cells. A workbook keeps at least one sheet.",
-                REMOVE,
+                "Call only when the person asks to delete a sheet and its cells. A workbook keeps at least one sheet. The person confirms first.",
+                Annotations::REMOVE,
             ),
             with(state, delete),
         ),
@@ -69,8 +71,8 @@ pub fn tools(state: &AppState) -> Vec<Tool> {
             spec(
                 "feuilles_clear_range",
                 "Clear a range",
-                "Call to empty the cells of a range. Their formatting stays; the rows and columns do not move.",
-                OVERWRITE,
+                "Call to empty the cells of a range. Their formatting stays; the rows and columns do not move. The person confirms first.",
+                Annotations::OVERWRITE,
             ),
             with(state, clear),
         ),
@@ -94,12 +96,12 @@ async fn update(state: AppState, call: Call, input: UpdateInput) -> Result<Answe
     Ok(change(&state, &call, input.workbook_id, changes).await?.into())
 }
 
-async fn delete(state: AppState, call: Call, input: SheetInput) -> Result<Answer<WriteOutput>, ToolError> {
-    let edit = Edit { sheet: input.sheet, kind: EditKind::DeleteSheet };
-    Ok(change(&state, &call, input.workbook_id, vec![Change::Edit(edit)]).await?.into())
+async fn delete(state: AppState, call: Call, input: SheetInput) -> Result<Answer<Confirmed>, ToolError> {
+    let planned = Planned { workbook_id: input.workbook_id, sheet: input.sheet, op: Op::DeleteSheet };
+    ask(&state, &call, "feuilles_delete_sheet", planned).await
 }
 
-async fn clear(state: AppState, call: Call, input: ClearInput) -> Result<Answer<WriteOutput>, ToolError> {
-    let edit = Edit { sheet: input.sheet, kind: EditKind::Clear(parse_range(&input.range)?) };
-    Ok(change(&state, &call, input.workbook_id, vec![Change::Edit(edit)]).await?.into())
+async fn clear(state: AppState, call: Call, input: ClearInput) -> Result<Answer<Confirmed>, ToolError> {
+    let planned = Planned { workbook_id: input.workbook_id, sheet: input.sheet, op: Op::Clear { range: input.range } };
+    ask(&state, &call, "feuilles_clear_range", planned).await
 }

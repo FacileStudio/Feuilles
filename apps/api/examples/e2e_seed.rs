@@ -1,7 +1,9 @@
 //! Test-only seeding for the browser end-to-end run (`apps/client/e2e`). Never shipped: the
 //! image builds the `api` binary only. It writes two space members and one outsider straight
 //! into a scratch database, with Registre identities under `OIDC_ISSUER`, and mints each a
-//! browser session through porte's own session store. It prints the cookies as JSON.
+//! browser session through porte's own session store, so its token carries
+//! `porte::BROWSER_TOKEN_PREFIX` and confirms agent actions like a real login. It prints the
+//! cookies as JSON.
 //!
 //! `DATABASE_URL=... OIDC_ISSUER=... cargo run --example e2e_seed`
 
@@ -37,7 +39,8 @@ async fn seed() -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     let mut cookies = serde_json::Map::new();
     for (name, role) in [("alice", Some("owner")), ("bob", Some("member")), ("outsider", None)] {
         let user = person(&pool, &issuer, name, role).await?;
-        let (token, _) = sessions.issue(user, "").await?;
+        let template = porte::Session { user_id: user, ..porte::Session::default() };
+        let (token, _, _) = sessions.issue_cookie_for(&http::Request::new(()), template).await?;
         cookies.insert(name.into(), token.into());
     }
     Ok(serde_json::json!({ "space": SPACE, "cookies": cookies }))

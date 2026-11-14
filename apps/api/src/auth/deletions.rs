@@ -5,7 +5,7 @@ use uuid::Uuid;
 use super::spaces::{Evict, Eviction};
 
 /// Erases what Feuilles holds about a person Registre deleted: their personal workbooks, their
-/// space memberships and their account. Space workbooks stay, with no owner. Their sockets close
+/// pending agent actions, their space memberships and their account. Space workbooks stay, with no owner. Their sockets close
 /// in every room.
 pub struct AppData {
     pool: PgPool,
@@ -21,7 +21,11 @@ impl AppData {
 
 /// Erases `(provider, subject)` in one transaction and returns the personal workbooks it
 /// deleted.
-pub async fn erase_person(pool: &PgPool, provider: &str, subject: &str) -> Result<Vec<Uuid>, sqlx::Error> {
+pub async fn erase_person(
+    pool: &PgPool,
+    provider: &str,
+    subject: &str,
+) -> Result<Vec<Uuid>, Box<dyn std::error::Error + Send + Sync>> {
     let mut tx = pool.begin().await?;
     let user: Option<i64> =
         sqlx::query_scalar("SELECT user_id FROM porte_identities WHERE provider = $1 AND subject = $2")
@@ -35,6 +39,7 @@ pub async fn erase_person(pool: &PgPool, provider: &str, subject: &str) -> Resul
             .bind(user)
             .fetch_all(&mut *tx)
             .await?;
+        tronc::mcp::erase_pending(&mut *tx, &[user.to_string()]).await?;
         sqlx::query("DELETE FROM porte_users WHERE id = $1").bind(user).execute(&mut *tx).await?;
     }
     sqlx::query("DELETE FROM space_members WHERE subject = $1").bind(subject).execute(&mut *tx).await?;

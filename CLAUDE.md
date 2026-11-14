@@ -7,7 +7,7 @@ Collaborative spreadsheets on IronCalc. Rust API in `apps/api`, SvelteKit client
 
 - Rust 1.98.1 (`apps/api/rust-toolchain.toml`), axum 0.8, sqlx 0.9 (runtime queries only, no
   `query!` macros), Postgres 16
-- tronc-rs v0.4.0 and porte-rs v0.7.0 by GitHub URL and tag. Both name tronc by the same URL
+- tronc-rs v0.5.1 and porte-rs v0.8.1 by GitHub URL and tag. Both name tronc by the same URL
   and tag, so there is one `tronc::Error` type
 - `ironcalc = "=0.9.1"`, and the client's `@ironcalc/wasm` at exactly the same version
 
@@ -26,8 +26,8 @@ If `cargo` is a mise shim and mise refuses the untrusted `mise.toml`, run with
 
 ## Invariants
 
-- **One replica.** Rooms are in memory. `docker-compose.yml` sets `replicas: 1` and
-  `stop-first`. Never scale the API.
+- **One replica.** Rooms are in memory. `docker-compose.yml` sets `replicas: 1` and a fixed
+  `container_name`, so a deploy stops the old container first. Never scale the API.
 - **Engine pin.** Snapshots and batches are bitcode of IronCalc's private types. Never bump
   `ironcalc` in a routine update; follow the upgrade procedure in `docs/deployment.md`
   (`api engine-export`, deploy, `api engine-verify`). `ENGINE_VERSION` must match `Cargo.toml`.

@@ -4,6 +4,8 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-14
+
 ### Changed
 
 - Landing hero: three people edit the sheet at once. Léa fills the costs, you write a SUM that

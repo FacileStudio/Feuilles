@@ -29,15 +29,17 @@ Migrations run at boot behind an advisory lock (`tronc::migrate`). A failed migr
 
 ## One replica
 
-`feuilles-api` sets `deploy.replicas: 1` and `update_config.order: stop-first`. Collaboration
-rooms are in memory: two replicas would each hold a model of the same workbook and order
-batches differently. `stop-first` keeps a deploy from running the old and the new container side
-by side. This holds until a pub/sub layer exists. A deploy disconnects every editor for a few
+`feuilles-api` sets `deploy.replicas: 1` and a fixed `container_name`, with `restart:
+unless-stopped`. Collaboration rooms are in memory: two replicas would each hold a model of the
+same workbook and order batches differently. `docker compose up` stops the old container before
+it starts the new one under the same name, so a deploy never runs the two side by side. The file
+carries no swarm-only `update_config` or `restart_policy`: compose ignores them. This holds until a pub/sub layer exists. A deploy disconnects every editor for a few
 seconds; on SIGTERM each room writes its snapshot and closes its sockets with 1001, and clients
 reconnect and resend.
 
 The directory sync, the deletion poll, the hourly trash purge and the boot sheet count backfill
-(logged as `sheet count: backfilled workbooks`) run in that one process.
+(logged as `sheet count: backfilled workbooks`) and the hourly prune of agent actions resolved or
+expired over 30 days ago run in that one process.
 
 ## Importing spreadsheets
 

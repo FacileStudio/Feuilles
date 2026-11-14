@@ -1,83 +1,100 @@
+<script module lang="ts">
+	export interface Peer {
+		name: string;
+		color: string;
+		from: string | null;
+		to?: string;
+	}
+</script>
+
 <script lang="ts">
 	import { Bar, Roll } from '@facile/mise-en-scene';
 
 	interface Props {
 		compact: boolean;
-		tools: string;
-		design: string;
-		active: 'B5' | 'B6' | null;
+		values: Record<string, string>;
+		formatted: boolean;
+		active: string | null;
 		formula: string;
 		total: string;
-		peer: boolean;
-		toolsCell?: HTMLElement;
-		totalCell?: HTMLElement;
+		peers: Peer[];
+		cells?: Record<string, HTMLElement>;
 	}
 
-	let { compact, tools, design, active, formula, total, peer, toolsCell = $bindable(), totalCell = $bindable() }: Props = $props();
+	let { compact, values, formatted, active, formula, total, peers, cells = $bindable({}) }: Props = $props();
 
-	const ROWS = [
-		{ label: 'Hosting', cost: '120' },
-		{ label: 'Design', cost: '480' },
-		{ label: 'Ads', cost: '300' },
-		{ label: 'Tools', cost: '' }
-	];
+	const LABELS = ['Hosting', 'Design', 'Ads', 'Tools'];
+	const HEAD = ['Item', 'Cost', 'Notes'];
+	const BARS = [62, 40, 55, 34];
 
 	const editing = $derived(active === 'B6' && total === '');
 	const range = $derived(editing && formula.length >= 6);
+	const columns = $derived(compact ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'D']);
 
-	function cost(index: number) {
-		if (index === 1) return design;
-		if (index === 3) return tools;
-		return ROWS[index].cost;
-	}
+	const boxes = $derived(
+		peers.flatMap((peer) => {
+			const start = peer.from ? cells[peer.from] : undefined;
+			const end = cells[peer.to ?? peer.from ?? ''] ?? start;
+			if (!start || !end) return [];
+			const left = start.offsetLeft;
+			const top = start.offsetTop;
+			return [{ ...peer, left, top, width: end.offsetLeft + end.offsetWidth - left, height: end.offsetTop + end.offsetHeight - top }];
+		})
+	);
 </script>
 
 <div class="sd-grid" class:sd-compact-grid={compact}>
 	<span class="sd-corner"></span>
-	<span class="sd-col">A</span>
-	<span class="sd-col">B</span>
-	<span class="sd-col">C</span>
-	{#if !compact}<span class="sd-col">D</span>{/if}
+	{#each columns as column (column)}<span class="sd-col">{column}</span>{/each}
 
 	<span class="sd-row">1</span>
-	<span class="sd-cell sd-strong">Item</span>
-	<span class="sd-cell sd-strong sd-num">Cost</span>
-	<span class="sd-cell"><Bar w="48%" /></span>
+	{#each HEAD as label, index (label)}
+		<span bind:this={cells[`${columns[index]}1`]} class="sd-cell" class:sd-num={index === 1} class:sd-head={formatted}>{label}</span>
+	{/each}
 	{#if !compact}<span class="sd-cell"></span>{/if}
 
-	{#each ROWS as row, index (row.label)}
+	{#each LABELS as label, index (label)}
 		{@const address = `B${index + 2}`}
 		<span class="sd-row">{index + 2}</span>
-		<span class="sd-cell">{row.label}</span>
-		{#if index === 3}
-			<span bind:this={toolsCell} class="sd-cell sd-num" class:sd-range={range} class:sd-active={active === address}>{tools}</span>
-		{:else}
-			<span class="sd-cell sd-num" class:sd-range={range} class:sd-peer-cell={peer && index === 1}>
-				{#if index === 1}<Roll value={cost(index)} />{:else}{cost(index)}{/if}
-				{#if peer && index === 1}<span class="sd-tag"><span class="sd-dot"></span>Léa</span>{/if}
-			</span>
-		{/if}
-		<span class="sd-cell"><Bar w={`${[62, 40, 55, 34][index]}%`} /></span>
+		<span class="sd-cell">{label}</span>
+		<span bind:this={cells[address]} class="sd-cell sd-num" class:sd-range={range}>{values[address] ?? ''}</span>
+		<span class="sd-cell"><Bar w={`${BARS[index]}%`} /></span>
 		{#if !compact}<span class="sd-cell"></span>{/if}
 	{/each}
 
 	<span class="sd-row">6</span>
 	<span class="sd-cell sd-strong">Total</span>
-	<span bind:this={totalCell} class="sd-cell sd-num sd-strong" class:sd-active={active === 'B6'}>
+	<span bind:this={cells.B6} class="sd-cell sd-num sd-strong" class:sd-active={active === 'B6'}>
 		{#if editing}<span class="sd-typed">{formula}</span>{:else}<Roll value={total} />{/if}
 	</span>
 	<span class="sd-cell"></span>
 	{#if !compact}<span class="sd-cell"></span>{/if}
 
 	<span class="sd-row">7</span>
-	<span class="sd-cell"></span>
-	<span class="sd-cell"></span>
-	<span class="sd-cell"></span>
-	{#if !compact}<span class="sd-cell"></span>{/if}
+	{#each columns as column (column)}<span class="sd-cell"></span>{/each}
+
+	{#each boxes as box (box.name)}
+		<div
+			class="sd-peer pointer-events-none absolute z-[5] rounded-[2px]"
+			style:left="{box.left}px"
+			style:top="{box.top}px"
+			style:width="{box.width}px"
+			style:height="{box.height}px"
+			style:outline="2px solid {box.color}"
+		>
+			<span
+				class="absolute -top-5 left-0 flex items-center gap-1 rounded-fc-sm bg-fc-component px-1.5 text-[11px] leading-5 font-medium whitespace-nowrap text-fc-fg"
+			>
+				<span class="size-2 rounded-full" style:background-color={box.color}></span>
+				{box.name}
+			</span>
+		</div>
+	{/each}
 </div>
 
 <style>
 	.sd-grid {
+		position: relative;
 		display: grid;
 		flex: 1;
 		grid-template-columns: 44px 200px 150px 220px 1fr;
@@ -114,14 +131,20 @@
 		padding: 0 10px;
 		background: var(--mes-w-body);
 		white-space: nowrap;
-		transition: background 0.2s ease;
+		transition:
+			background 0.25s ease,
+			font-weight 0.25s ease;
 	}
 	.sd-num {
 		justify-content: flex-end;
 		font-variant-numeric: tabular-nums;
 	}
-	.sd-strong {
+	.sd-strong,
+	.sd-head {
 		font-weight: 700;
+	}
+	.sd-head {
+		background: color-mix(in oklch, var(--color-fc-fg) 7%, var(--mes-w-body));
 	}
 	.sd-range {
 		background: color-mix(in oklch, var(--color-fc-accent) 10%, var(--mes-w-body));
@@ -129,8 +152,12 @@
 	.sd-active {
 		box-shadow: inset 0 0 0 2px var(--color-fc-accent);
 	}
-	.sd-peer-cell {
-		box-shadow: inset 0 0 0 2px var(--color-fc-chart-1);
+	.sd-peer {
+		outline-offset: -1px;
+		transition:
+			left 0.35s cubic-bezier(0.25, 0.8, 0.25, 1),
+			top 0.35s cubic-bezier(0.25, 0.8, 0.25, 1),
+			width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
 	}
 	.sd-typed {
 		width: 100%;
@@ -138,27 +165,5 @@
 		font-size: 12px;
 		font-weight: 400;
 		text-align: left;
-	}
-	.sd-tag {
-		position: absolute;
-		top: -18px;
-		left: 0;
-		z-index: 1;
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		height: 18px;
-		padding: 0 6px;
-		border-radius: 4px;
-		background: var(--color-fc-component);
-		font-size: 11px;
-		font-weight: 500;
-		color: var(--color-fc-fg);
-	}
-	.sd-dot {
-		width: 8px;
-		height: 8px;
-		border-radius: 999px;
-		background: var(--color-fc-chart-1);
 	}
 </style>

@@ -4,6 +4,12 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+### Changed
+
+- Landing hero: three people edit the sheet at once. Léa fills the costs, you write a SUM that
+  updates as each cost lands, and Malik formats the header row, with named selections and the
+  muse `Presence` avatars in the header
+
 ## [0.12.0] - 2026-11-14
 
 ### Added

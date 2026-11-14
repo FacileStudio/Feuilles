@@ -1,63 +1,96 @@
 <script lang="ts">
 	import { Bar, Cursor, Stage, Window, cursorAt, type Act } from '@facile/mise-en-scene';
-	import { Icon } from '@facile/muse';
+	import { Icon, Presence, USER_COLORS } from '@facile/muse';
 	import { icons } from '$lib/icons';
-	import SheetGrid from './SheetGrid.svelte';
+	import SheetGrid, { type Peer } from './SheetGrid.svelte';
 
 	const FORMULA = '=SUM(B2:B5)';
+	const COSTS = ['120', '480', '300', '90'];
+	const LEA = USER_COLORS[1];
+	const MALIK = USER_COLORS[3];
+	const PEERS = [
+		{ id: 'lea', name: 'Léa', color: LEA },
+		{ id: 'malik', name: 'Malik', color: MALIK }
+	];
 	const TOOLS = [icons.undo, icons.redo, null, icons.bold, icons.italic, icons.underline, icons.fill, null, icons.alignLeft, icons.alignCenter, icons.alignRight, null, icons.currency, icons.percent];
 
-	let tools = $state('');
-	let design = $state('480');
-	let active = $state<'B5' | 'B6' | null>(null);
+	let values = $state<Record<string, string>>({});
+	let landed = $state<string[]>([]);
+	let formatted = $state(false);
+	let active = $state<string | null>(null);
 	let formula = $state('');
-	let total = $state('');
-	let peer = $state(false);
+	let summed = $state(false);
+	let lea = $state<string | null>(null);
+	let malik = $state<{ from: string | null; to: string }>({ from: null, to: 'A1' });
 	let cursor = $state(cursorAt());
-	let toolsCell = $state<HTMLElement>();
-	let totalCell = $state<HTMLElement>();
+	let cells = $state<Record<string, HTMLElement>>({});
 
-	const bar = $derived(active === 'B5' ? tools : active === 'B6' ? formula : '');
+	const total = $derived(summed ? landed.reduce((sum, address) => sum + Number(values[address]), 0).toLocaleString('en-US') : '');
+	const bar = $derived(active === 'B6' ? formula : '');
+	const peers = $derived<Peer[]>([
+		{ name: 'Léa', color: LEA, from: lea },
+		{ name: 'Malik', color: MALIK, ...malik }
+	]);
 
 	function reset() {
-		tools = '';
-		design = '480';
+		values = {};
+		landed = [];
+		formatted = false;
 		active = null;
 		formula = '';
-		total = '';
-		peer = false;
+		summed = false;
+		lea = null;
+		malik = { from: null, to: 'A1' };
 		cursor.visible = false;
 	}
 
 	function poster() {
-		tools = '90';
-		design = '520';
+		values = { B2: '120', B3: '480', B4: '3' };
+		landed = ['B2', 'B3'];
+		formatted = true;
 		active = 'B6';
-		formula = FORMULA;
-		total = '1,030';
-		peer = true;
+		formula = '=SUM(B2:B';
+		lea = 'B4';
+		malik = { from: 'A1', to: 'C1' };
+	}
+
+	async function fillCosts(act: Act) {
+		await act.wait(1300);
+		for (const [index, cost] of COSTS.entries()) {
+			const address = `B${index + 2}`;
+			lea = address;
+			await act.wait(420);
+			await act.type(cost, (value) => (values[address] = value), 130);
+			landed.push(address);
+			await act.wait(480);
+		}
+	}
+
+	async function writeSum(act: Act) {
+		await act.wait(400);
+		cursor.visible = true;
+		await act.move(cursor, act.point(cells.B6, 0.85, 0.75));
+		await act.click(cursor, () => (active = 'B6'));
+		await act.wait(250);
+		await act.type(FORMULA, (value) => (formula = value), 80);
+		await act.wait(300);
+		summed = true;
+		cursor.visible = false;
+	}
+
+	async function formatHeader(act: Act) {
+		await act.wait(2400);
+		malik = { from: 'A1', to: 'A1' };
+		await act.wait(500);
+		malik = { from: 'A1', to: 'B1' };
+		await act.wait(260);
+		malik = { from: 'A1', to: 'C1' };
+		await act.wait(700);
+		formatted = true;
 	}
 
 	async function script(act: Act) {
-		await act.wait(700);
-		cursor.visible = true;
-		await act.move(cursor, act.point(toolsCell, 0.3, 0.7));
-		await act.click(cursor, () => (active = 'B5'));
-		await act.wait(250);
-		await act.type('90', (value) => (tools = value), 160);
-		await act.wait(500);
-		await act.move(cursor, act.point(totalCell, 0.85, 0.75));
-		await act.click(cursor, () => (active = 'B6'));
-		await act.wait(300);
-		await act.type(FORMULA, (value) => (formula = value), 75);
-		await act.wait(700);
-		total = '990';
-		await act.wait(1200);
-		cursor.visible = false;
-		peer = true;
-		await act.wait(900);
-		design = '520';
-		total = '1,030';
+		await Promise.all([fillCosts(act), writeSum(act), formatHeader(act)]);
 		await act.wait(2400);
 		reset();
 		await act.wait(600);
@@ -68,10 +101,7 @@
 	<div class="sd-head">
 		<span class="sd-back"><Icon icon={icons.chevronLeft} size={16} />{#if !compact}Workbooks{/if}</span>
 		<span class="sd-title">Q4 budget</span>
-		<span class="sd-people">
-			<span class="sd-avatar sd-you">Y</span>
-			{#if peer}<span class="sd-avatar sd-peer">L</span>{/if}
-		</span>
+		<Presence peers={PEERS} />
 		<span class="sd-icon"><Icon icon={icons.download} size={16} /></span>
 	</div>
 {/snippet}
@@ -107,14 +137,14 @@
 	{reset}
 	{poster}
 	class="w-full max-w-[960px]"
-	label="A Feuilles workbook: a cost is typed in, a SUM formula totals the column, and the total updates when a teammate edits a cell."
+	label="A Feuilles workbook edited by three people at once: Léa fills in the costs, you write a SUM that updates as they land, and Malik formats the header row."
 >
 	{#snippet children({ compact })}
 		{#if compact}
 			<Window style="top:8px;left:0;width:358px;height:388px">
 				{@render header(true)}
 				{@render formulaBar()}
-				<SheetGrid compact {tools} {design} {active} {formula} {total} {peer} bind:toolsCell bind:totalCell />
+				<SheetGrid compact {values} {formatted} {active} {formula} {total} {peers} bind:cells />
 				{@render tabs()}
 			</Window>
 		{:else}
@@ -122,7 +152,7 @@
 				{@render header(false)}
 				{@render toolbar()}
 				{@render formulaBar()}
-				<SheetGrid compact={false} {tools} {design} {active} {formula} {total} {peer} bind:toolsCell bind:totalCell />
+				<SheetGrid compact={false} {values} {formatted} {active} {formula} {total} {peers} bind:cells />
 				{@render tabs()}
 			</Window>
 		{/if}
@@ -154,28 +184,6 @@
 		font-size: 15px;
 		font-weight: 700;
 		white-space: nowrap;
-	}
-	.sd-people {
-		display: flex;
-		gap: 4px;
-	}
-	.sd-avatar {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 24px;
-		height: 24px;
-		border-radius: 999px;
-		font-size: 11px;
-		font-weight: 700;
-	}
-	.sd-you {
-		background: var(--color-fc-accent);
-		color: var(--color-fc-accent-fg);
-	}
-	.sd-peer {
-		background: var(--color-fc-chart-1);
-		color: var(--color-fc-fg);
 	}
 	.sd-icon {
 		display: inline-flex;

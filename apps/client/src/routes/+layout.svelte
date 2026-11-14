@@ -2,6 +2,8 @@
 	import '../app.css';
 	import type { Snippet } from 'svelte';
 	import { AuthScreen, Icon, Spinner, Toaster, provideLocale } from '@facile/muse';
+	import { page } from '$app/state';
+	import Landing from '$lib/landing/Landing.svelte';
 	import AppShell from '$lib/shell/AppShell.svelte';
 	import { icons } from '$lib/icons';
 	import { account, loadAccount } from '$lib/state/account.svelte';
@@ -26,6 +28,8 @@
 	<AppShell user={account.user}>
 		{@render children()}
 	</AppShell>
+{:else if page.url.pathname === '/' && !account.error}
+	<Landing />
 {:else}
 	<AuthScreen appName="Feuilles" href={signInUrl}>
 		{#snippet logo()}

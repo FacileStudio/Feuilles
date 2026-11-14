@@ -6,7 +6,6 @@ body {
 	min-height: 100dvh;
 	background-color: var(--color-fc-bg);
 	color: var(--color-fc-fg);
-	font-family: var(--font-fc-sans, system-ui, -apple-system, sans-serif);
 }
 
 * {

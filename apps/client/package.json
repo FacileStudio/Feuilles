@@ -29,7 +29,7 @@
 	},
 	"dependencies": {
 		"@facile/mise-en-scene": "github:FacileStudio/mise-en-scene#v0.2.2",
-		"@facile/muse": "github:FacileStudio/muse#v0.24.0",
+		"@facile/muse": "github:FacileStudio/muse#v0.25.1",
 		"@ironcalc/wasm": "0.9.1"
 	}
 }

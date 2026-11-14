@@ -21,7 +21,6 @@ services:
       start_period: 30s
       start_interval: 1s
   feuilles-api:
-    container_name: feuilles-api
     restart: unless-stopped
     build:
       context: .
@@ -32,6 +31,7 @@ services:
     - default
     - dokploy-network
     labels:
+      journal.app: feuilles-api
       traefik.enable: 'true'
       traefik.docker.network: dokploy-network
       traefik.http.routers.feuilles-web.rule: "Host(`feuilles.facile.studio`)"

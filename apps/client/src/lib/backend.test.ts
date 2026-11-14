@@ -68,13 +68,15 @@ describe('backend', () => {
 	});
 
 	it('reads the session with the Bulle origin and answers agent actions with the CSRF header', async () => {
-		const { calls, client } = fake(ok({ user: null, bulle_url: 'https://bulle.test' }));
-		await expect(client.session()).resolves.toEqual({ user: null, bulle_url: 'https://bulle.test' });
+		const { calls, client } = fake(ok({ user: null, bulle_url: 'https://bulle.test', actions: [{ id: 'a1' }] }));
+		await expect(client.session()).resolves.toMatchObject({ user: null, bulle_url: 'https://bulle.test' });
+		await expect(client.actions()).resolves.toEqual([{ id: 'a1' }]);
 		await client.confirmAction('a/1');
 		await client.dismissAction('a1');
-		expect(calls.slice(1).map((call) => [call.init.method, call.input, header(call, 'X-Facile-CSRF')])).toEqual([
-			['POST', '/api/mcp/actions/a%2F1/confirm', '1'],
-			['POST', '/api/mcp/actions/a1/dismiss', '1']
+		expect(calls.slice(1).map((call) => [call.init.method ?? 'GET', call.input, header(call, 'X-Facile-CSRF')])).toEqual([
+			['GET', '/api/mcp/pending', null],
+			['POST', '/api/mcp/pending/a%2F1/confirm', '1'],
+			['POST', '/api/mcp/pending/a1/dismiss', '1']
 		]);
 	});
 

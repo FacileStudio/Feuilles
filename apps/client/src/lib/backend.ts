@@ -43,9 +43,9 @@ export function createBackend(fetcher: Fetch) {
 		trash: (id: string) => send<void>('DELETE', `/api/workbooks/${encodeURIComponent(id)}`),
 		restore: (id: string) => send<Workbook>('POST', `/api/workbooks/${encodeURIComponent(id)}/restore`),
 		destroy: (id: string) => send<void>('DELETE', `/api/workbooks/${encodeURIComponent(id)}/permanent`),
-		actions: () => call<PendingAction[]>('/api/mcp/actions'),
-		confirmAction: (id: string) => send<{ status: string }>('POST', `/api/mcp/actions/${encodeURIComponent(id)}/confirm`),
-		dismissAction: (id: string) => send<void>('POST', `/api/mcp/actions/${encodeURIComponent(id)}/dismiss`)
+		actions: () => call<{ actions: PendingAction[]; truncated?: boolean }>('/api/mcp/pending').then((r) => r.actions),
+		confirmAction: (id: string) => send<{ status: string }>('POST', `/api/mcp/pending/${encodeURIComponent(id)}/confirm`),
+		dismissAction: (id: string) => send<{ status: string }>('POST', `/api/mcp/pending/${encodeURIComponent(id)}/dismiss`)
 	};
 }
 

@@ -27,10 +27,9 @@ export type SessionUser = { id: number; email: string; name: string; avatar_url?
 /** `GET /api/auth/session`: the account, or null, and the origin of the Bulle sidebar. */
 export type SessionAnswer = { user: SessionUser | null; bulle_url?: string };
 
-/** One agent action waiting for the person, from `GET /api/mcp/actions`. */
+/** One agent action waiting for the person, from `GET /api/mcp/pending`. */
 export interface PendingAction {
 	id: string;
-	user_id: string;
 	kind: string;
 	target: string;
 	summary: string;

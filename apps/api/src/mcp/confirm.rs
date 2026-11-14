@@ -1,9 +1,8 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use serde::Serialize;
 use tronc::Error;
-use tronc::mcp::{Action, Answer, Call, ConfirmConfig, Confirmations, Kind, Outcome, PostgresPending, ToolError};
+use tronc::mcp::{ASK_AGAIN, Action, Answer, Call, Kind, Outcome, ToolError, failure};
 use uuid::Uuid;
 
 use super::planned::Planned;
@@ -26,6 +25,9 @@ pub struct Confirmed {
     /// The link the person opens to confirm, when the client could not ask.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub confirm_url: String,
+    /// What happened and what to do next, for the model.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub message: String,
     /// The sheets after the edit, once it is done.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub sheets: Vec<SheetInfo>,
@@ -64,22 +66,13 @@ async fn run(state: AppState, action: Action) -> tronc::Result<()> {
     model::change(&state, planned.workbook_id, user, vec![change]).await.map(drop)
 }
 
-/// The confirmation flow over `mcp_actions`: the person confirms on the client's `/pending` page,
-/// or in their client when it can ask. `key` signs the questions.
-pub fn confirmations(state: &AppState, resource: &str, key: &[u8]) -> Result<Confirmations, String> {
-    let kinds = KINDS.map(|tool| {
+/// The four kinds that ask before they run, each fingerprinted by the workbook's `seq`.
+pub fn kinds(state: &AppState) -> HashMap<String, Kind> {
+    HashMap::from(KINDS.map(|tool| {
         let (a, b) = (state.clone(), state.clone());
         let kind = Kind::new(tool, move |action| fingerprint(a.clone(), action), move |action| run(b.clone(), action));
         (tool.to_owned(), kind)
-    });
-    Confirmations::new(ConfirmConfig {
-        store: Arc::new(PostgresPending::new(state.pool.clone())),
-        key: key.to_vec(),
-        confirm_url: format!("{}/pending", resource.strip_suffix("/mcp").unwrap_or(resource)),
-        kinds: HashMap::from(kinds),
-        pending_ttl: std::time::Duration::ZERO,
-        ask_ttl: std::time::Duration::ZERO,
-    })
+    }))
 }
 
 async fn answer(state: &AppState, outcome: Outcome) -> Result<Confirmed, ToolError> {
@@ -87,7 +80,8 @@ async fn answer(state: &AppState, outcome: Outcome) -> Result<Confirmed, ToolErr
         (tronc::mcp::STATUS_DONE, Some(action)) => model::sheets(state, planned(action)?.1.workbook_id).await?,
         _ => Vec::new(),
     };
-    Ok(Confirmed { status: outcome.status.to_owned(), confirm_url: outcome.confirm_url, sheets })
+    let (status, confirm_url, message) = (outcome.status.to_owned(), outcome.confirm_url, outcome.message);
+    Ok(Confirmed { status, confirm_url, message, sheets })
 }
 
 /// Asks the person before `planned` runs as `kind`, after refusing what would fail anyway; on the
@@ -95,7 +89,7 @@ async fn answer(state: &AppState, outcome: Outcome) -> Result<Confirmed, ToolErr
 pub async fn ask(state: &AppState, call: &Call, kind: &str, planned: Planned) -> Result<Answer<Confirmed>, ToolError> {
     let confirmations = state.confirmations.clone().ok_or_else(|| ToolError::new("confirmations are off"))?;
     if call.retrying() {
-        let outcome = confirmations.resume(call, kind).await?;
+        let outcome = confirmations.resume(call, kind).await.map_err(|e| failure(e, ASK_AGAIN))?;
         return Ok(answer(state, outcome).await?.into());
     }
     let (row, _) = workbook(state, call, planned.workbook_id, Access::Editor).await?;

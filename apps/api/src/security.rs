@@ -2,7 +2,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use axum::Router;
+use axum::extract::{Request, State};
+use axum::middleware::Next;
+use axum::response::Response;
 use tronc::http::{SecurityConfig, SecurityOverride, SecurityOverrideConfig, Sources, security_override};
+use tronc::mcp::PENDING_PATH;
 
 /// tronc's policy plus what the Feuilles client needs: `wasm-unsafe-eval` to compile the
 /// IronCalc engine, Vision's tracker script, the hashes of the inline scripts adapter-static
@@ -46,16 +50,23 @@ pub fn bulle_origin(raw: &str) -> Result<String, String> {
 }
 
 /// The built client, answering every path the other routes leave, framable by
-/// [`frame_ancestors`]. The API keeps tronc's `frame-ancestors 'none'`.
+/// [`frame_ancestors`] except the confirm page, which keeps tronc's `frame-ancestors 'none'` like
+/// the API: an approval inside a Docs embed would not be the person's own.
 pub fn spa(dir: PathBuf, production: bool) -> Result<Router, String> {
     let framing = SecurityOverride::new(SecurityOverrideConfig {
         csp_sources: Sources::from([("frame-ancestors".to_owned(), frame_ancestors(production))]),
         ..SecurityOverrideConfig::default()
     })?;
     let handler = tronc::spa::handler(tronc::spa::Config { dir, ..Default::default() });
-    Ok(Router::new()
-        .fallback_service(handler)
-        .layer(axum::middleware::from_fn_with_state(Arc::new(framing), security_override)))
+    Ok(Router::new().fallback_service(handler).layer(axum::middleware::from_fn_with_state(Arc::new(framing), framed)))
+}
+
+async fn framed(policy: State<Arc<SecurityOverride>>, request: Request, next: Next) -> Response {
+    let path = request.uri().path();
+    if path == PENDING_PATH || path.starts_with(&format!("{PENDING_PATH}/")) {
+        return next.run(request).await;
+    }
+    security_override(policy, request, next).await
 }
 
 #[cfg(test)]
@@ -97,6 +108,12 @@ mod tests {
         let report = page.headers()["content-security-policy-report-only"].to_str().expect("report-only").to_owned();
         assert!(report.contains("frame-src https://bulle.test"), "{report}");
         assert!(page.headers().get("x-frame-options").is_none());
+        for confirm in ["/pending?action=a1", "/pending/"] {
+            let page = headers(confirm).await;
+            let policy = page.headers()["content-security-policy"].to_str().expect("policy").to_owned();
+            assert!(policy.contains("frame-ancestors 'none'"), "{confirm}: {policy}");
+            assert_eq!(page.headers()["x-frame-options"], "DENY", "{confirm}");
+        }
         let api = headers("/api/ping").await;
         assert!(api.headers()["content-security-policy"].to_str().expect("policy").contains("frame-ancestors 'none'"));
         assert_eq!(api.headers()["x-frame-options"], "DENY");

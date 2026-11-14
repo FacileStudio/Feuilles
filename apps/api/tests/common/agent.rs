@@ -3,10 +3,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use api::mcp::Mcp;
 use serde_json::Value;
 use tronc::mcp::rmcp::model::ElicitationAction;
-use tronc::mcp::{TokenInfo, Verifier, VerifyError, VerifyFuture};
+use tronc::mcp::{AppConfig, TokenInfo, Verifier, VerifyError, VerifyFuture};
 use tronc::mcptest::{self, ClientOptions};
 
 use super::serve_with;
@@ -31,11 +30,9 @@ impl Verifier for DevTokens {
 
 pub fn options(addr: SocketAddr) -> api::router::Options {
     api::router::Options {
-        mcp: Some(Mcp {
-            resource: format!("http://{addr}/mcp"),
-            issuer: super::ISSUER.into(),
-            verifier: Arc::new(DevTokens),
-            key: b"test-key".to_vec(),
+        mcp: Some(AppConfig {
+            state_key: api::mcp::state_key("test-key"),
+            ..AppConfig::new(format!("http://{addr}/mcp"), super::ISSUER, Arc::new(DevTokens))
         }),
         ..Default::default()
     }

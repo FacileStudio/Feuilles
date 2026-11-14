@@ -1,5 +1,7 @@
 import { backend, signInUrl, type SessionUser } from '$lib/backend';
+import { goto } from '$app/navigation';
 import { DEFAULT_BULLE } from '$lib/bulle';
+import { rememberReturn, takeReturn } from './return';
 
 /**
  * The signed-in person and the origin of their Bulle sidebar, from the API's `BULLE_URL`.
@@ -12,7 +14,10 @@ export const account = $state<{ user: SessionUser | null; bulle: string; loaded:
 	error: null
 });
 
-/** Loads the session once per page load, then refreshes the Registre profile behind it. */
+/**
+ * Loads the session once per page load, then refreshes the Registre profile behind it. A signed-in
+ * load goes back to the page {@link signIn} was called from.
+ */
 export async function loadAccount(): Promise<void> {
 	try {
 		const answer = await backend.session();
@@ -24,7 +29,10 @@ export async function loadAccount(): Promise<void> {
 	} finally {
 		account.loaded = true;
 	}
-	if (account.user) void refreshProfile();
+	if (!account.user) return;
+	void refreshProfile();
+	const back = takeReturn();
+	if (back && back !== window.location.pathname + window.location.search) void goto(back);
 }
 
 /** Asks the API to re-read the Registre profile, and reloads the session when it changed. */
@@ -42,7 +50,8 @@ export async function signOut(): Promise<void> {
 	window.location.assign('/');
 }
 
-/** Sends the browser to Registre. */
-export function signIn(): void {
+/** Sends the browser to Registre, then back to `returnTo` once signed in. */
+export function signIn(returnTo?: string): void {
+	if (returnTo) rememberReturn(returnTo);
 	window.location.assign(signInUrl);
 }

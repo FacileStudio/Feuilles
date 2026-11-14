@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use axum::Router;
 use porte::{Identity, mcpauth};
-use tronc::mcp::{Annotations, Call, Options, ToolError, ToolSpec};
+use tronc::mcp::{Annotations, App, AppConfig, AppSpec, Call, PostgresPending, ToolError, ToolSpec};
 use uuid::Uuid;
 
 use crate::auth::Kits;
@@ -23,48 +23,37 @@ use crate::modules::workbooks::service::{Access, require};
 use crate::modules::workbooks::store::Row;
 use crate::state::AppState;
 
-pub use confirm::{KINDS, confirmations};
+pub use confirm::KINDS;
 
-/// A read: changes nothing, safe to repeat.
-const READ: Annotations = Annotations { read_only: true, destructive: false, idempotent: true, open_world: false };
-/// Adds something new each call and overwrites nothing.
-const ADD: Annotations = Annotations { read_only: false, destructive: false, idempotent: false, open_world: false };
-/// Overwrites or removes, and the same call again changes nothing more.
-const OVERWRITE: Annotations = Annotations { read_only: false, destructive: true, idempotent: true, open_world: false };
-/// Removes or shifts content, and the same call again does it again.
-const REMOVE: Annotations = Annotations { read_only: false, destructive: true, idempotent: false, open_world: false };
-
-/// What mounting `/mcp` needs.
-#[derive(Clone)]
-pub struct Mcp {
-    /// `MCP_RESOURCE`, the public URL of `/mcp`.
-    pub resource: String,
-    /// The authorization server, `OIDC_ISSUER`.
-    pub issuer: String,
-    /// Checks bearer tokens.
-    pub verifier: Arc<dyn tronc::mcp::Verifier>,
-    /// Signs the confirmation questions. Secret, and stable across restarts.
-    pub key: Vec<u8>,
-}
-
-/// The confirmation key derived from `secret`, an app secret such as `PORTE_TOKEN_KEY`.
+/// The key that signs the confirmation questions, from `secret`, `PORTE_TOKEN_KEY`.
 pub fn state_key(secret: &str) -> Vec<u8> {
-    format!("feuilles-mcp-state:{secret}").into_bytes()
+    tronc::mcp::state_key("feuilles", secret)
 }
 
-/// Mounts `/mcp` and its protected-resource metadata on the root router.
-pub fn mount(app: Router, state: &AppState, mcp: Mcp) -> Result<Router, String> {
-    let mut options = Options::new("feuilles", mcp.resource, mcp.issuer, mcp.verifier);
-    options.title = "Feuilles".into();
-    options.version = crate::version::VERSION.into();
-    options.instructions = "Spreadsheets of the Facile suite. List workbooks, read ranges, write cells, and \
-        change sheets, rows and columns. Rows and columns are numbered from 1; a sheet is its 0-based index \
-        or its tab name. Every write reaches the people who have the workbook open."
-        .into();
-    options.tools =
+/// The Feuilles MCP server over `cfg`, with its confirmations on `mcp_actions`. Its tools are
+/// added by [`mount`], once the state holds [`App::confirmations`].
+pub fn app(state: &AppState, mut cfg: AppConfig) -> Result<App, String> {
+    cfg.version = crate::version::VERSION.into();
+    cfg.pending = Some(Arc::new(PostgresPending::new(state.pool.clone())));
+    let spec = AppSpec {
+        name: "feuilles".into(),
+        title: "Feuilles".into(),
+        instructions: "Spreadsheets of the Facile suite. List workbooks, read ranges, write cells, and \
+            change sheets, rows and columns. Rows and columns are numbered from 1; a sheet is its 0-based index \
+            or its tab name. Every write reaches the people who have the workbook open."
+            .into(),
+        kinds: confirm::kinds(state),
+        ..AppSpec::default()
+    };
+    App::new(cfg, spec)
+}
+
+/// Mounts `/mcp` and its protected-resource metadata on the root router, with every tool.
+pub fn mount(router: Router, state: &AppState, mut app: App) -> Result<Router, String> {
+    app.options.tools =
         [read::tools(state), write::tools(state), workbooks::tools(state), sheets::tools(state), lines::tools(state)]
             .concat();
-    tronc::mcp::mount(app, options)
+    app.mount(router)
 }
 
 /// The verifier for `resource`: Registre's tokens, accounts provisioned on a first call.

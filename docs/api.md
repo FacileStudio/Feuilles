@@ -221,16 +221,23 @@ is `I`.
 The four tools that remove cells for good ask the person first. They check the sheet, the span and
 the access, then ask: a client that can elicit gets `input_required` and runs the edit on the
 person's accept; any other client gets `Confirmed` = `{"status":"pending_confirmation",
-"confirm_url"}` and nothing runs. The link opens `/pending?action=<id>` in Feuilles. After a run,
-`Confirmed` is `{"status":"done","sheets"}`; after a decline, `{"status":"declined"}`. A pending
-action records the workbook's `seq`: any write in between closes it as changed. Actions live in
-`mcp_actions` for 7 days and are erased with the account.
+"confirm_url","message"}` and nothing runs. The link opens `/pending?action=<id>` in Feuilles.
+Asking again for the same edit while it waits reuses the open action. After a run, `Confirmed` is
+`{"status":"done","sheets"}`; after a decline, `{"status":"declined","message"}`. A pending action
+records the workbook's `seq`: any write in between closes it as changed. Actions live in
+`mcp_actions` for 7 days, are pruned 30 days after they close, and are erased with the account.
+
+The confirm page's API is tronc's `PendingPage`, on the Go apps' paths:
 
 | Route | Answer |
 |---|---|
-| `GET /api/mcp/actions` | `[{"id","kind","target","summary","client_id","created_at","expires_at","state"}]`, `state` is `ready`, `changed` or `missing` |
-| `POST /api/mcp/actions/{id}/confirm` | `{"status":"done"}`; 404 when gone or not yours, 412 when the workbook changed |
-| `POST /api/mcp/actions/{id}/dismiss` | 204 |
+| `GET /api/mcp/pending` | `{"actions":[{"id","kind","target","summary","client_id","created_at","expires_at","state"}],"truncated"?}`, at most 100, `state` is `ready`, `changed` or `missing` |
+| `POST /api/mcp/pending/{id}/confirm` | `{"status":"done"}`; 404 when gone or not yours, 412 when the workbook changed |
+| `POST /api/mcp/pending/{id}/dismiss` | `{"status":"dismissed"}` |
 
-Only the person's own browser session (cookie plus `X-Facile-CSRF`) reaches these routes: a bearer
-token, an API session or a delegated agent gets 403. They answer 404 when MCP is off.
+Only a browser login's own session cookie, with `X-Facile-CSRF`, reaches these routes
+(`porte::mcpauth::require_own_session`). A bearer, a CLI, device or named API token sent as the
+cookie, a cookie minted before porte-rs 0.8.0 (no `b~` mark) or a delegated agent gets 403
+`permission_denied`; the page then asks the person to sign in again in their browser. They answer
+404 when MCP is off. `/pending` and these routes answer `frame-ancestors 'none'`, even though the
+rest of the client may be framed by Docs.

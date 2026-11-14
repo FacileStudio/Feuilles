@@ -18,8 +18,9 @@ const fn auth(method: utoipa::openapi::path::HttpMethod, path: &'static str, sum
     }
 }
 
-const OWN: &str = "The person's own browser session only: a bearer token, an API session or a delegated agent gets 403. \
-    404 when MCP is off.";
+const OWN: &str = "Only a browser login's own session cookie, with `X-Facile-CSRF`: a bearer, a CLI, device or named \
+    API token (even sent as the cookie), a cookie from before porte-rs 0.8.0, or a delegated agent gets 403 \
+    `permission_denied`. 404 when MCP is off.";
 
 /// porte's routes, the Registre nudges, the MCP confirm page's API and `/version`.
 pub const ROUTES: &[Route] = &[
@@ -89,21 +90,21 @@ pub const ROUTES: &[Route] = &[
         answer: (200, Object),
         errors: &[401, 403],
         description: OWN,
-        ..auth(Get, "/api/mcp/actions", "My pending agent actions")
+        ..auth(Get, "/api/mcp/pending", "List actions waiting for confirmation")
     },
     Route {
         tag: "MCP",
         answer: (200, Object),
         errors: &[401, 403, 404, 412],
         description: OWN,
-        ..auth(Post, "/api/mcp/actions/{id}/confirm", "Confirm an agent action")
+        ..auth(Post, "/api/mcp/pending/{id}/confirm", "Confirm an action")
     },
     Route {
         tag: "MCP",
-        answer: (204, Empty),
+        answer: (200, Object),
         errors: &[401, 403, 404],
         description: OWN,
-        ..auth(Post, "/api/mcp/actions/{id}/dismiss", "Dismiss an agent action")
+        ..auth(Post, "/api/mcp/pending/{id}/dismiss", "Dismiss an action")
     },
     Route {
         tag: "Meta",

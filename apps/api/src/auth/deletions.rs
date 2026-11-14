@@ -21,7 +21,11 @@ impl AppData {
 
 /// Erases `(provider, subject)` in one transaction and returns the personal workbooks it
 /// deleted.
-pub async fn erase_person(pool: &PgPool, provider: &str, subject: &str) -> Result<Vec<Uuid>, sqlx::Error> {
+pub async fn erase_person(
+    pool: &PgPool,
+    provider: &str,
+    subject: &str,
+) -> Result<Vec<Uuid>, Box<dyn std::error::Error + Send + Sync>> {
     let mut tx = pool.begin().await?;
     let user: Option<i64> =
         sqlx::query_scalar("SELECT user_id FROM porte_identities WHERE provider = $1 AND subject = $2")
@@ -35,7 +39,7 @@ pub async fn erase_person(pool: &PgPool, provider: &str, subject: &str) -> Resul
             .bind(user)
             .fetch_all(&mut *tx)
             .await?;
-        sqlx::query("DELETE FROM mcp_actions WHERE user_id = $1").bind(user.to_string()).execute(&mut *tx).await?;
+        tronc::mcp::erase_pending(&mut *tx, &[user.to_string()]).await?;
         sqlx::query("DELETE FROM porte_users WHERE id = $1").bind(user).execute(&mut *tx).await?;
     }
     sqlx::query("DELETE FROM space_members WHERE subject = $1").bind(subject).execute(&mut *tx).await?;

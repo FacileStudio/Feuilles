@@ -84,3 +84,10 @@ pub async fn import(
     let (status, bytes) = send(router, request).await;
     (status, serde_json::from_slice(&bytes).unwrap_or(Value::Null))
 }
+
+/// A browser login's session token for `who`, as porte's OIDC callback mints it.
+pub async fn browser_login(state: &api::state::AppState, who: &Person) -> String {
+    let template = porte::Session { user_id: who.user_id, ..porte::Session::default() };
+    let request = http::Request::new(());
+    state.kits.sessions.issue_cookie_for(&request, template).await.expect("browser session").0
+}

@@ -1,11 +1,11 @@
 use serde::Deserialize;
-use tronc::mcp::{self, Answer, Call, Tool, ToolError};
+use tronc::mcp::{self, Annotations, Answer, Call, Tool, ToolError};
 use uuid::Uuid;
 
 use super::confirm::{Confirmed, ask};
 use super::planned::{Op, Planned};
 use super::write::{WriteOutput, change};
-use super::{ADD, REMOVE, spec, with};
+use super::{spec, with};
 use crate::engine::{Axis, Edit, EditKind, SheetRef};
 use crate::hub::Change;
 use crate::state::AppState;
@@ -26,33 +26,22 @@ pub struct LinesInput {
 
 /// The tools that insert and delete rows and columns.
 pub fn tools(state: &AppState) -> Vec<Tool> {
-    let insert = "Formulas follow the cells they point to.";
+    let before =
+        |what: &str| format!("Call to insert blank {what} before `at`. Formulas follow the cells they point to.");
     let delete = "Call only when the person asks to remove them with their cells; formulas pointing there break. The person confirms first.";
+    let (add, remove) = (Annotations::ADD, Annotations::REMOVE);
     vec![
+        mcp::tool(spec("feuilles_insert_rows", "Insert rows", &before("rows"), add), with(state, insert_rows)),
         mcp::tool(
-            spec(
-                "feuilles_insert_rows",
-                "Insert rows",
-                &format!("Call to insert blank rows before `at`. {insert}"),
-                ADD,
-            ),
-            with(state, insert_rows),
-        ),
-        mcp::tool(
-            spec("feuilles_delete_rows", "Delete rows", &format!("Deletes rows from `at`. {delete}"), REMOVE),
+            spec("feuilles_delete_rows", "Delete rows", &format!("Deletes rows from `at`. {delete}"), remove),
             with(state, delete_rows),
         ),
         mcp::tool(
-            spec(
-                "feuilles_insert_columns",
-                "Insert columns",
-                &format!("Call to insert blank columns before `at`. {insert}"),
-                ADD,
-            ),
+            spec("feuilles_insert_columns", "Insert columns", &before("columns"), add),
             with(state, insert_columns),
         ),
         mcp::tool(
-            spec("feuilles_delete_columns", "Delete columns", &format!("Deletes columns from `at`. {delete}"), REMOVE),
+            spec("feuilles_delete_columns", "Delete columns", &format!("Deletes columns from `at`. {delete}"), remove),
             with(state, delete_columns),
         ),
     ]

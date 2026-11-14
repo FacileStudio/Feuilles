@@ -21,11 +21,9 @@ async fn every_mounted_route_is_documented() {
     let Some(state) = common::state().await else { return };
     for mcp in [false, true] {
         let options = api::router::Options {
-            mcp: mcp.then(|| api::mcp::Mcp {
-                resource: "http://127.0.0.1:4000/mcp".into(),
-                issuer: common::ISSUER.into(),
-                verifier: std::sync::Arc::new(Never),
-                key: b"test-key".to_vec(),
+            mcp: mcp.then(|| tronc::mcp::AppConfig {
+                state_key: api::mcp::state_key("test-key"),
+                ..tronc::mcp::AppConfig::new("http://127.0.0.1:4000/mcp", common::ISSUER, std::sync::Arc::new(Never))
             }),
             ..Default::default()
         };

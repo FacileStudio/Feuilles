@@ -4,6 +4,11 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+### Added
+
+- Landing: a "Beyond the grid" section after the hero with three looping demo tiles: xlsx
+  import, agents asking before they remove cells, and a workbook embedded in Docs
+
 ## [0.11.1] - 2026-11-14
 
 ### Fixed

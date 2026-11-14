@@ -2,6 +2,9 @@
 	import { Button, Card, Icon, LandingFooter, LandingHeader, SignInWithFacile } from '@facile/muse';
 	import { signInUrl } from '$lib/backend';
 	import { icons } from '$lib/icons';
+	import AgentTile from './AgentTile.svelte';
+	import EmbedTile from './EmbedTile.svelte';
+	import ImportTile from './ImportTile.svelte';
 	import SheetDemo from './SheetDemo.svelte';
 
 	const FEATURES = [
@@ -47,6 +50,15 @@
 				<Button href="#features" variant="secondary" size="lg" iconRight="solar:arrow-down-linear">See features</Button>
 			</div>
 			<SheetDemo />
+		</section>
+
+		<section aria-labelledby="tiles-title" class="{container} flex flex-col gap-8">
+			<h2 id="tiles-title" class="font-fc-title text-fc-xl font-bold sm:text-fc-2xl">Beyond the grid</h2>
+			<div class="grid max-w-[960px] gap-6 md:grid-cols-3">
+				<ImportTile />
+				<AgentTile />
+				<EmbedTile />
+			</div>
 		</section>
 
 		<section id="features" aria-labelledby="features-title" class="{container} flex scroll-mt-24 flex-col gap-8">

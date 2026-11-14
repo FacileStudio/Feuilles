@@ -2,7 +2,7 @@
 	import type { Workbook } from '$lib/backend';
 	import { sheetLabel } from './format';
 
-	let { workbook }: { workbook: Workbook } = $props();
+	let { workbook }: { workbook: Pick<Workbook, 'sheets' | 'sheet_count'> } = $props();
 
 	const sheetCount = $derived(sheetLabel(workbook));
 </script>

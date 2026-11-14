@@ -33,5 +33,8 @@ export const icons = {
 	insertLeft: 'solar:arrow-left-linear',
 	insertRight: 'solar:arrow-right-linear',
 	more: 'solar:menu-dots-linear',
-	logo: 'solar:table-minimalistic-bold-duotone'
+	logo: 'solar:table-minimalistic-bold-duotone',
+	docs: 'solar:documents-bold-duotone',
+	toile: 'solar:tablet-bold-duotone',
+	bulle: 'solar:smile-circle-bold-duotone'
 } as const;

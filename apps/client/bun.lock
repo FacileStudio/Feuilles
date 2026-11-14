@@ -6,7 +6,7 @@
       "name": "feuilles-client",
       "dependencies": {
         "@facile/mise-en-scene": "github:FacileStudio/mise-en-scene#v0.2.2",
-        "@facile/muse": "github:FacileStudio/muse#v0.23.0",
+        "@facile/muse": "github:FacileStudio/muse#v0.24.0",
         "@ironcalc/wasm": "0.9.1",
       },
       "devDependencies": {
@@ -29,7 +29,7 @@
   "packages": {
     "@facile/mise-en-scene": ["@facile/mise-en-scene@github:FacileStudio/mise-en-scene#7050c6c", { "peerDependencies": { "svelte": "^5.29.0" } }, "FacileStudio-mise-en-scene-7050c6c", "sha512-qXj5cCxgAwYeck9aLtPqx38D3H2csCHA1xUySzpabHH18QGZyDLSLMj8HuXwMieASr3axBLF7V59lS6GvVtEpQ=="],
 
-    "@facile/muse": ["@facile/muse@github:FacileStudio/muse#709a22d", { "dependencies": { "gsap": "^3.13.0", "tailwind-merge": "^3.5.0" }, "peerDependencies": { "svelte": "^5.0.0", "tailwindcss": "^4.0.0" } }, "FacileStudio-muse-709a22d", "sha512-YXi7YAF8R1qfUBmx3nWKfeKXo+utYj4dXmqA3IHdrX9Fvp49avnKZ5vTdfl51i1IbnBiy/SydMxzgUH2vo0drQ=="],
+    "@facile/muse": ["@facile/muse@github:FacileStudio/muse#63b7403", { "dependencies": { "gsap": "^3.13.0", "tailwind-merge": "^3.5.0" }, "peerDependencies": { "svelte": "^5.0.0", "tailwindcss": "^4.0.0" } }, "FacileStudio-muse-63b7403", "sha512-txHtXcKj1s7UeHANu8NIwzE07r8Xl4Ivf4vEi8yJu+9zCJeZNIXCGdLTdYi1gwz2PL5uw1ttduY/QU/ZbamOsw=="],
 
     "@ironcalc/wasm": ["@ironcalc/wasm@0.9.1", "", {}, "sha512-PYNQ9hhXhZddhrJsaqf3KEL2nE/hJbQtvPN6t+C3RxGDIu/bWAICpHf/p3wL/9uiffPCNYaCTyZ/Mj3UMQvT4A=="],
 

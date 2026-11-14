@@ -1,7 +1,7 @@
 {
   "name": "Feuilles",
   "short_name": "Feuilles",
-  "description": "Spreadsheets on the IronCalc engine, with live co-editing and xlsx import and export. Agents read them over MCP.",
+  "description": "Des tableurs à remplir à plusieurs, vos fichiers Excel compris.",
   "icons": [
     {
       "src": "/icon-192.png",

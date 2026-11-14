@@ -9,10 +9,12 @@
 	import { account, loadAccount } from '$lib/state/account.svelte';
 	import { restoreTheme } from '$lib/state/theme.svelte';
 	import { signInUrl } from '$lib/backend';
+	import { bindLocale, t, visitorLocale } from '$lib/i18n/index.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
-	provideLocale(() => 'en');
+	const i18n = provideLocale(() => (account.user ? 'en' : visitorLocale()));
+	bindLocale(() => i18n.locale);
 
 	$effect(() => {
 		restoreTheme();
@@ -36,7 +38,7 @@
 			<Icon icon={icons.logo} size={32} class="text-fc-fg" />
 		{/snippet}
 		{#snippet tagline()}
-			<p>Spreadsheets your space edits together.</p>
+			<p>{t('landing.slogan')}</p>
 		{/snippet}
 		{#snippet notice()}
 			{#if account.error}

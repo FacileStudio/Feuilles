@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Roll, grow } from '@facile/mise-en-scene';
+	import { Roll } from '@facile/mise-en-scene';
 
 	interface Row {
 		label: string;
@@ -13,7 +13,7 @@
 <div class="ms">
 	<div class="ms-row ms-head"><span class="ms-n"></span><span class="ms-cell">A</span><span class="ms-cell">B</span></div>
 	{#each rows as row, index (row.label)}
-		<div class="ms-wrap" out:grow={{ duration: 320 }}>
+		<div class="ms-wrap">
 			<div class="ms-row" class:ms-warning={row.tone === 'warning'} class:ms-live={row.tone === 'live'}>
 				<span class="ms-n">{index + 1}</span>
 				<span class="ms-cell ms-body">{row.label}</span>

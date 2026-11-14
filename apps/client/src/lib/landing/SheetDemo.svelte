@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Bar, Cursor, Stage, Window, cursorAt, type Act } from '@facile/mise-en-scene';
 	import { Icon, Presence, USER_COLORS } from '@facile/muse';
+	import { formatNumber, t } from '$lib/i18n/index.svelte';
 	import { icons } from '$lib/icons';
 	import SheetGrid, { type Peer } from './SheetGrid.svelte';
 
@@ -25,7 +26,7 @@
 	let cursor = $state(cursorAt());
 	let cells = $state<Record<string, HTMLElement>>({});
 
-	const total = $derived(summed ? landed.reduce((sum, address) => sum + Number(values[address]), 0).toLocaleString('en-US') : '');
+	const total = $derived(summed ? formatNumber(landed.reduce((sum, address) => sum + Number(values[address]), 0)) : '');
 	const bar = $derived(active === 'B6' ? formula : '');
 	const peers = $derived<Peer[]>([
 		{ name: 'Léa', color: LEA, from: lea },
@@ -99,8 +100,8 @@
 
 {#snippet header(compact: boolean)}
 	<div class="sd-head">
-		<span class="sd-back"><Icon icon={icons.chevronLeft} size={16} />{#if !compact}Workbooks{/if}</span>
-		<span class="sd-title">Q4 budget</span>
+		<span class="sd-back"><Icon icon={icons.chevronLeft} size={16} />{#if !compact}{t('demo.back')}{/if}</span>
+		<span class="sd-title">{t('demo.book')}</span>
 		<Presence peers={PEERS} />
 		<span class="sd-icon"><Icon icon={icons.download} size={16} /></span>
 	</div>
@@ -124,7 +125,7 @@
 {#snippet tabs()}
 	<div class="sd-tabs">
 		<span class="sd-icon"><Icon icon={icons.plus} size={16} /></span>
-		<span class="sd-tab">Budget</span>
+		<span class="sd-tab">{t('demo.tab')}</span>
 		<span class="sd-tab-idle"><Bar w="44px" /></span>
 	</div>
 {/snippet}
@@ -137,7 +138,7 @@
 	{reset}
 	{poster}
 	class="w-full max-w-[960px]"
-	label="A Feuilles workbook edited by three people at once: Léa fills in the costs, you write a SUM that updates as they land, and Malik formats the header row."
+	label={t('demo.label')}
 >
 	{#snippet children({ compact })}
 		{#if compact}

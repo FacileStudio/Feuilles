@@ -9,6 +9,7 @@
 
 <script lang="ts">
 	import { Bar, Roll } from '@facile/mise-en-scene';
+	import { t } from '$lib/i18n/index.svelte';
 
 	interface Props {
 		compact: boolean;
@@ -23,8 +24,8 @@
 
 	let { compact, values, formatted, active, formula, total, peers, cells = $bindable({}) }: Props = $props();
 
-	const LABELS = ['Hosting', 'Design', 'Ads', 'Tools'];
-	const HEAD = ['Item', 'Cost', 'Notes'];
+	const labels = $derived([t('demo.row.hosting'), t('demo.row.design'), t('demo.row.ads'), t('demo.row.tools')]);
+	const head = $derived([t('demo.head.item'), t('demo.head.cost'), t('demo.head.notes')]);
 	const BARS = [62, 40, 55, 34];
 
 	const editing = $derived(active === 'B6' && total === '');
@@ -48,12 +49,12 @@
 	{#each columns as column (column)}<span class="sd-col">{column}</span>{/each}
 
 	<span class="sd-row">1</span>
-	{#each HEAD as label, index (label)}
+	{#each head as label, index (index)}
 		<span bind:this={cells[`${columns[index]}1`]} class="sd-cell" class:sd-num={index === 1} class:sd-head={formatted}>{label}</span>
 	{/each}
 	{#if !compact}<span class="sd-cell"></span>{/if}
 
-	{#each LABELS as label, index (label)}
+	{#each labels as label, index (index)}
 		{@const address = `B${index + 2}`}
 		<span class="sd-row">{index + 2}</span>
 		<span class="sd-cell">{label}</span>
@@ -63,7 +64,7 @@
 	{/each}
 
 	<span class="sd-row">6</span>
-	<span class="sd-cell sd-strong">Total</span>
+	<span class="sd-cell sd-strong">{t('demo.total')}</span>
 	<span bind:this={cells.B6} class="sd-cell sd-num sd-strong" class:sd-active={active === 'B6'}>
 		{#if editing}<span class="sd-typed">{formula}</span>{:else}<Roll value={total} />{/if}
 	</span>

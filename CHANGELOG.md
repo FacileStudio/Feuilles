@@ -4,6 +4,20 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-14
+
+### Added
+
+- Signed-out visitors on `/` get a landing page: muse `LandingHeader` and `LandingFooter`, a
+  hero, four feature cards and a closing sign-in. Other signed-out routes keep the sign-in screen
+- The hero plays a mise-en-scene demo of a workbook: a cost is typed, `=SUM(B2:B5)` totals the
+  column, and the total rolls when a teammate edits a cell. Phones get a compact layout
+
+### Changed
+
+- muse v0.23.0. Text uses Magnetik from muse: `app.css` no longer forces the system font through
+  the undefined `--font-fc-sans` token
+
 ## [0.9.6] - 2026-11-14
 
 ### Added

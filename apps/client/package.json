@@ -28,7 +28,8 @@
 		"vitest": "^5.1.0"
 	},
 	"dependencies": {
-		"@facile/muse": "github:FacileStudio/muse#v0.21.2",
+		"@facile/mise-en-scene": "github:FacileStudio/mise-en-scene#v0.2.1",
+		"@facile/muse": "github:FacileStudio/muse#v0.23.0",
 		"@ironcalc/wasm": "0.9.1"
 	}
 }

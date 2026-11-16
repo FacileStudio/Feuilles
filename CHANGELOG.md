@@ -4,6 +4,12 @@ All notable changes to Feuilles. The format follows Keep a Changelog; versions f
 
 ## [Unreleased]
 
+## [0.14.4] - 2026-11-16
+
+### Changed
+
+- Tabs and segmented option cards match the button height (36px, 44px on touch) with muse v0.32.0.
+
 ## [0.14.3] - 2026-11-14
 
 ### Changed
